@@ -12,7 +12,7 @@ from prompt.json_refactor import extract_and_fix_gpt_json, merge_numbered_fields
 import config as c
 
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI"))
 
 interview_api = APIRouter()
 
