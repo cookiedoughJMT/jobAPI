@@ -63,3 +63,44 @@ def extract_and_fix_gpt_json(content: str):
             "raw_fragment": fixed_json[e.pos-30:e.pos+30],
             "raw": fixed_json
         }
+
+def merge_numbered_fields(data: dict, remove_original: bool = True) -> dict:
+    """
+    numbered 항목들을 '/'로 병합해 하나의 필드로 만들되,
+    해당 prefix의 값이 전부 None일 경우는 병합 결과도 None으로 설정.
+    """
+    target_prefixes = [
+        "bad_description", "bad_summary",
+        "good_description", "good_summary",
+        "cause", "state",
+        "improvment", "solution"
+    ]
+
+    for prefix in target_prefixes:
+        merged_items = []
+
+        # 접미 숫자 포함된 키 추출 및 정렬
+        numbered_keys = sorted(
+            [k for k in data if re.fullmatch(f"{prefix}[0-9]+", k)],
+            key=lambda x: int(re.search(r"\d+", x).group())
+        )
+
+        for key in numbered_keys:
+            value = data.get(key)
+            if isinstance(value, str) and value.strip():
+                merged_items.append(value.strip())
+
+        # 값이 하나라도 있으면 병합 / 모두 None이면 None
+        if merged_items:
+            data[prefix] = "/".join(merged_items)
+        elif numbered_keys:
+            data[prefix] = None
+
+        # 기존 키 제거
+        if remove_original:
+            for key in numbered_keys:
+                data.pop(key, None)
+    return data
+
+
+

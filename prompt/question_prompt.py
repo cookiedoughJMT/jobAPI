@@ -475,8 +475,8 @@ def generate_json_evaluation(
         이번 답변에서는 상태가 "좋아짐 / 유사함 / 나빠짐" 중 어떤지, 그 이유와 함께 분석해주세요.
         """
     else:
-        prev_badpoint_clause = """
-        이전 지적사항이 없는 경우, `state01 ~ state03` 및 `cause01 ~ cause03` 항목에는 null 값을 입력해주세요.
+        prev_badpoint_clause = f"""
+        이전 지적사항이 없는 경우, `state01 ~ state0{len(prev_badpoints) if prev_badpoints else 1}` 및 `cause01 ~ cause0{len(prev_badpoints) if prev_badpoints else 1}` 항목에는 null 값을 입력해주세요.
         """
 
     # 프롬프트 최종 구성
@@ -507,6 +507,10 @@ def generate_json_evaluation(
     예: "~이 부족하여 설득력이 떨어집니다.", "~이 개선될 필요가 있습니다.", "~이 필요합니다." 등
 
     그리고 전반적인 강점과 개선점을 요약 및 설명 형식으로 각각 {goodorbad_num}가지씩 작성해주세요.
+    good_summary01 ~ good_summary0{goodorbad_num} 항목과 good_description01 ~ good_description0{goodorbad_num} 항목에는 반드시 **지원자의 긍정적인 측면, 장점, 강점으로 해석할 수 있는 요소만** 작성해주세요.만약 긍정적으로 평가할 요소가 거의 없다면 null로 처리 해주세요.
+    
+    bad_summary01 ~ bad_summary0{goodorbad_num} 항목과 bad_description01 ~ bad_description0{goodorbad_num} 항목에는 반드시 **지원자의 부족한 부분, 아쉬운 점, 개선이 필요한 요소**를 구체적으로 작성해주세요.만약 특별히 지적할 만한 부족한 점이 없다고 판단되는 경우에는 해당 항목은 `null`로 처리해주세요.
+    
     {prev_badpoint_clause}
     마지막으로 각 질문에 대해 하나씩, 총 {q_num}개의 `solution01 ~ solution{q_num}` 항목을 작성해주세요.
     각 solution은 해당 질문에 대한 답변을 보완하거나 개선하기 위한 **구체적이고 실질적인 조언**이어야 합니다.
@@ -527,8 +531,8 @@ def generate_json_evaluation(
     - good_description01 ~ good_description0{goodorbad_num}
     - bad_summary01 ~ bad_summary0{goodorbad_num}
     - bad_description01 ~ bad_description0{goodorbad_num}
-    - state01 ~ state03
-    - cause01 ~ cause03
+    - state01 ~ state0{len(prev_badpoints) if prev_badpoints else 1}
+    - cause01 ~ cause0{len(prev_badpoints) if prev_badpoints else 1}
     - solution01 ~ solution0{q_num}
     - improvment01 ~ improvment0{improvment_num}
 

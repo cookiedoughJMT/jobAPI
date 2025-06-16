@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import json
 import re
 from prompt.question_prompt import generate_json_pressure_prompt, generate_json_personality_prompt,generate_json_evaluation, generate_json_technical_prompt, generate_json_situational_prompt,generate_json_general_prompt
-from prompt.json_refactor import extract_and_fix_gpt_json
+from prompt.json_refactor import extract_and_fix_gpt_json, merge_numbered_fields
 import config as c
 
 load_dotenv()
@@ -28,7 +28,7 @@ class InterviewEvaluationRequest(BaseModel):
     goodorbad_num: int = c.EVAL_GOODORBAD
     improvment_num: int = c.EVAL_IMPROVMENT
     prev_badpoints: list[str] | None
-# ========================================================================== 통합 면접 API ==========================================================================================
+# ========================================================================== 통합 면접 API==========================================================================================
 
 @interview_api.post("/general_interview")
 async def generate_general_interview(request:InterviewRequest):
@@ -187,7 +187,7 @@ async def generate_evaluation(dto:InterviewEvaluationRequest):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano",
             messages=[
                 {"role": "system",
                  "content": "You are a professional AI that evaluates and provides feedback on interview responses."},
@@ -198,7 +198,9 @@ async def generate_evaluation(dto:InterviewEvaluationRequest):
         )
 
         content = response.choices[0].message.content.strip()
-        return extract_and_fix_gpt_json(content)
+        data = extract_and_fix_gpt_json(content)
+        data = merge_numbered_fields(data)
+        return data
 
     except Exception as e:
         return {"error": f"API 요청 실패: {str(e)}"}
@@ -239,12 +241,12 @@ async def generate_test():
 
         content = response.choices[0].message.content.strip()
 
-        json_str = re.search(r"\{[\s\S]+\}", content)
-        if json_str:
-            parsed = json.loads(json_str.group())
+        json_match = re.search(r"(\[.*?\]|\{.*?\})", content, re.DOTALL)
+        if json_match:
+            parsed = json.loads(json_match.group())
             return parsed
         else:
             return {"error": "JSON 응답을 찾을 수 없습니다.", "raw": content}
 
     except Exception as e:
-        return {"error": str(e)}
+        return {"error": f"API 요청 실패: {str(e)}"}
