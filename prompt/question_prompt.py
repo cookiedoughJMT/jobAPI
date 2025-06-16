@@ -2,6 +2,109 @@ import pandas as pd
 import random
 import os
 
+QUESTION_TYPES = ["general", "pressure", "personality", "technical", "situational"]
+
+# ========================================================================== 질문 생성 함수 ==========================================================================================
+
+def generate_qa_block(question_modes):
+    qa_tone_map = {
+        "general": [
+            "따뜻한", "공감적인", "중립적인", "격려하는", "진지한",
+            "편안한", "신뢰를 주는", "호기심 어린", "사려 깊은", "친근한"
+        ],
+        "pressure": [
+            "도발적인", "냉철한", "의심스러운", "비꼬는", "차가운",
+            "조롱 섞인", "고압적인", "냉소적인", "의도적으로 허를 찌르는"
+        ],
+        "personality": [
+            "공감적인", "따뜻한", "신뢰를 주는", "진지한",
+            "사려 깊은", "편안한", "호기심 어린"
+        ],
+        "technical": [
+            "냉철한", "중립적인", "진지한", "호기심 어린", "신뢰를 주는"
+        ],
+        "situational": [
+            "중립적인", "사려 깊은", "호기심 어린", "편안한", "진지한", "친근한"
+        ]
+    }
+    qa_intent_map = {
+        "general": [
+            "지원자의 성장 경험 파악",
+            "직무 관련 경험 공유 유도",
+            "지원 동기의 진정성 판단",
+            "장단점에 대한 자기 인식 확인",
+            "회사 문화 적응력 확인",
+            "향후 커리어 방향 확인",
+            "자기주도성 및 태도 평가"
+        ],
+        "pressure": [
+            "논리적 사고력 평가",
+            "위기 상황 대응력 판단",
+            "감정 조절 능력 확인",
+            "실수 책임감 검증",
+            "비판 수용 여부 판단",
+            "이력서 신뢰성 검증",
+            "압박 상황에서의 태도 분석"
+        ],
+        "personality": [
+            "소통 방식 및 공감능력 확인",
+            "타인 존중 및 협업 태도 평가",
+            "실수 시 대응 자세 평가",
+            "도덕성 및 윤리적 가치관 점검",
+            "자기 성찰 능력 판단",
+            "팀 내 갈등 대처 방식 파악",
+            "정서적 안정성 및 진정성 평가"
+        ],
+        "technical": [
+            "기술 깊이 확인",
+            "실무 응용 능력 검증",
+            "문제 해결 접근 방식 평가",
+            "개발/업무 도구 숙련도 확인",
+            "최근 기술 트렌드에 대한 이해도 평가",
+            "기술 선택의 합리성 판단",
+            "실제 프로젝트 적용 경험 분석"
+        ],
+        "situational": [
+            "갈등 해결 방식 테스트",
+            "리더십 스타일 파악",
+            "우선순위 판단 능력 확인",
+            "팀워크 상황에서의 태도 평가",
+            "도전적 문제 대처 방식 확인",
+            "책임감 있는 의사결정 판단",
+            "업무 중 돌발 상황 대응 평가"
+        ]
+    }
+
+    qa_mode_kor = {
+        "general": "일반 질문",
+        "pressure": "압박 질문",
+        "personality": "인성 질문",
+        "technical": "기술 질문",
+        "situational": "상황형 질문"
+    }
+
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(BASE_DIR, "../data/questions/general_interview_questions.csv")
+    general_df = pd.read_csv(csv_path)
+    general_pool = general_df["question"].dropna().tolist()
+
+    used_general_questions = []
+
+    qa_block = ""
+    for idx, mode in enumerate(question_modes):
+        if mode == "general":
+            # 중복 없이 랜덤 선택
+            available = list(set(general_pool) - set(used_general_questions))
+            selected = random.choice(available) if available else "일반 질문 예시"
+            used_general_questions.append(selected)
+            qa_block += f"{idx + 1}번째 질문: {selected}\n"
+        else:
+            tone = random.choice(qa_tone_map.get(mode, ["중립적인"]))
+            mode_kor = qa_mode_kor.get(mode, mode)
+            intent = random.choice(qa_intent_map.get(mode, ["지원자를 파악하는 것"]))
+            qa_block += f"{idx+1}번째 질문의 목적은 {intent}이며 {tone} 스타일의 {mode_kor}을 생성해주세요.\n"
+    return qa_block.strip()
+
 # ========================================================================== 주요사업 추출 함수 ==========================================================================================
 
 def get_business_area(company_name):
@@ -27,9 +130,79 @@ def get_business_area(company_name):
         print(f"[오류] CSV 파일 처리 중 문제 발생: {e}")
         return None
 
+# ========================================================================== 통합용 질문 5배수 랜덤 생성 함수 ==========================================================================================
+
+def generate_radom_question_types(total_questions):
+    assigned = []
+    base_count = 0
+
+    while len(assigned) < total_questions:
+        # Step 1: 5개 단위 블록 시작
+        block_base = QUESTION_TYPES.copy()
+        random.shuffle(block_base)  # 순서 무작위화
+
+        # 블록에서 가능한 만큼 추가
+        count_to_add = min(5, total_questions - len(assigned))
+        assigned.extend(block_base[:count_to_add])
+        base_count += count_to_add
+
+        # Step 2: 6~9일 때는 추가로 랜덤하게 유형 삽입
+        if base_count % 5 == 0 and len(assigned) < total_questions:
+            used_in_extra = set()
+            while len(assigned) < base_count + (total_questions % 5):
+                remaining_types = list(set(QUESTION_TYPES) - used_in_extra)
+                if not remaining_types:
+                    break  # 모든 유형을 한 번씩 썼음
+
+                new_type = random.choice(remaining_types)
+                assigned.append(new_type)
+                used_in_extra.add(new_type)
+
+    return assigned
+
+# ========================================================================== 통합 면접 프롬프트 ==========================================================================================
+
+def generate_json_general_prompt(job, company, q_number):
+
+    roles = [
+        "팀 동료",
+        "직속 상사",
+        "채용 담당자",
+        "현업 선배",
+        "멘토",
+        "인사 담당자"
+    ]
+    difficulties = ["상", "중", "하"]
+
+    modes = generate_radom_question_types(q_number)
+    qa_block = generate_qa_block(modes)
+
+    role = random.choice(roles)
+    difficulty = random.choice(difficulties)
+
+
+    prompt = (
+        (f"지원자는 '{company}' 기업에 지원하였으며, 해당 기업에서의 재직 경험은 없습니다.\n" if company else "")
+        + (f"지원자가 희망하는 직무는 {job}입니다.\n" if job else "")
+        + f"- 면접관 역할: {role}\n"
+        + f"- 질문 난이도: {difficulty}\n"
+        + "- 각 질문은 실제 인터뷰 상황에서 사용할 수 있도록 자연스럽고 진정성 있게 작성해주세요.\n"
+        + "- 각 질문은 서로 완전히 다른 논점과 상황 설정을 가져야 하며, 표현만 바뀐 유사 질문은 제외하세요.\n"
+        + "- 이미 문장으로 주어진 질문은 그대로 사용하며, 절대 수정하거나 변형하지 마세요.\n"
+        + "- 출력 형식: JSON 배열\n"
+        + "```json\n"
+        + "{ \"questions\": [\"질문 1\", \"질문 2\", \"질문 3\", \"질문 4\", \"질문 5\",...]}\n"
+        + "```"
+        + f"{qa_block}\n"
+    )
+
+    print(prompt, modes)  # 개발 중 확인용
+
+    return prompt, modes
+
 # ========================================================================== 압박 면접 프롬프트 ==========================================================================================
 
-def generate_json_pressure_prompt_5(job, company):
+def generate_json_pressure_prompt(job, company):
     tones = [
         "도발적인",
         "중립적인",
@@ -105,7 +278,7 @@ def generate_json_pressure_prompt_5(job, company):
 
 # ========================================================================== 인성 면접 프롬프트 ==========================================================================================
 
-def generate_json_personality_prompt_5(job, company):
+def generate_json_personality_prompt(job, company):
     # 선택지 정의
     tones = [
         "공감하는", "다정한", "신중한", "유연한", "진솔한", "차분한", "격려하는", "이해심 깊은",
@@ -171,7 +344,7 @@ def generate_json_personality_prompt_5(job, company):
 
 # ========================================================================== 심츰기술 면접 프롬프트 ==========================================================================================
 
-def generate_json_technical_prompt_5(job, company):
+def generate_json_technical_prompt(job, company):
 
     business_area = get_business_area(company)
 
@@ -224,7 +397,7 @@ def generate_json_technical_prompt_5(job, company):
 
 # ========================================================================== 상황 면접 프롬프트 ==========================================================================================
 
-def generate_json_situational_prompt_5(job, company):
+def generate_json_situational_prompt(job, company):
     business_area = get_business_area(company)
 
     tones = [

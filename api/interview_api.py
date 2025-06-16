@@ -7,7 +7,7 @@ import os
 from dotenv import load_dotenv
 import json
 import re
-from prompt.question_prompt import generate_json_pressure_prompt_5, generate_json_personality_prompt_5,generate_json_evaluation, generate_json_technical_prompt_5, generate_json_situational_prompt_5
+from prompt.question_prompt import generate_json_pressure_prompt, generate_json_personality_prompt,generate_json_evaluation, generate_json_technical_prompt, generate_json_situational_prompt,generate_json_general_prompt
 from prompt.json_refactor import extract_and_fix_gpt_json
 import config as c
 
@@ -28,12 +28,45 @@ class InterviewEvaluationRequest(BaseModel):
     goodorbad_num: int = c.EVAL_GOODORBAD
     improvment_num: int = c.EVAL_IMPROVMENT
     prev_badpoints: list[str] | None
+# ========================================================================== 통합 면접 API ==========================================================================================
+
+@interview_api.post("/general_interview")
+async def generate_general_interview(request:InterviewRequest):
+    prompt, modes = generate_json_general_prompt(request.job_role, request.company, 7)
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-nano",
+            messages=[
+                {"role": "system", "content": "너는 반복 없이 다양한 성향의 질문을 구성하는 AI야. 같은 주제를 변형해서 다시 말하지 말고, 질문 간의 명확한 주제 차이를 유지해."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.8
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        json_match = re.search(r"(\{.*?\})", content, re.DOTALL)
+        if json_match:
+            parsed = json.loads(json_match.group())
+
+            # 여기에 modes 삽입
+            if isinstance(parsed, dict) and "questions" in parsed:
+                parsed["modes"] = modes
+                return parsed
+            else:
+                return {"error": "유효한 questions 키가 없습니다.", "raw": content}
+        else:
+            return {"error": "JSON 응답을 찾을 수 없습니다.", "raw": content}
+
+    except Exception as e:
+        return {"error": str(e)}
 
 # ========================================================================== 압박 면접 API ==========================================================================================
 
 @interview_api.post("/pressure_interview")
 async def generate_pressure_interview(request:InterviewRequest):
-    prompt = generate_json_pressure_prompt_5(request.job_role, request.company)
+    prompt = generate_json_pressure_prompt(request.job_role, request.company)
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-nano",
@@ -62,7 +95,7 @@ async def generate_pressure_interview(request:InterviewRequest):
 @interview_api.post("/personality_interview")
 async def generate_personality_interview(reqeust:InterviewRequest):
 
-    prompt = generate_json_personality_prompt_5(reqeust.job_role, reqeust.company)
+    prompt = generate_json_personality_prompt(reqeust.job_role, reqeust.company)
 
     try:
         response = client.chat.completions.create(
@@ -92,7 +125,7 @@ async def generate_personality_interview(reqeust:InterviewRequest):
 @interview_api.post("/technical_interview")
 async def generate_technical_interview(reqeust:InterviewRequest):
 
-    prompt = generate_json_technical_prompt_5(reqeust.job_role, reqeust.company)
+    prompt = generate_json_technical_prompt(reqeust.job_role, reqeust.company)
 
     try:
         response = client.chat.completions.create(
@@ -121,7 +154,7 @@ async def generate_technical_interview(reqeust:InterviewRequest):
 @interview_api.post("/situational_interview")
 async def generate_situational_interview(reqeust:InterviewRequest):
 
-    prompt = generate_json_situational_prompt_5(reqeust.job_role, reqeust.company)
+    prompt = generate_json_situational_prompt(reqeust.job_role, reqeust.company)
 
     try:
         response = client.chat.completions.create(
@@ -154,7 +187,7 @@ async def generate_evaluation(dto:InterviewEvaluationRequest):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4.1-nano",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system",
                  "content": "You are a professional AI that evaluates and provides feedback on interview responses."},
