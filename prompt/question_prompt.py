@@ -29,7 +29,7 @@ def get_business_area(company_name):
 
 # ========================================================================== 압박 면접 프롬프트 ==========================================================================================
 
-def generate_json_pressure_prompt_5(job, company):
+def generate_json_pressure_prompt_5(job, company, count):
     tones = [
         "도발적인",
         "중립적인",
@@ -78,14 +78,16 @@ def generate_json_pressure_prompt_5(job, company):
     intent = random.choice(intents)
     difficulty = random.choice(difficulties)
 
+    print('count: ' + str(count))
+
     prompt = (
-            f"{tone} 스타일의 **압박 면접 질문**을 5개 생성해주세요.\n"
+            f"{tone} 스타일의 **압박 면접 질문**을 {count}개 생성해주세요.\n"
             + (f"지원자는 '{company}' 기업에 지원하였으며, 해당 기업에서의 재직 경험은 없습니다.\n" if company else "")
             + (f"지원자가 희망하는 직무는 {job}입니다.\n" if job else "")
             + f"- 면접관 역할: {role}\n"
             + f"- 질문 목적: {intent}\n"
             + f"- 질문 난이도: {difficulty}\n"
-            + "- 다음 주제를 하나씩 포함한 질문 5개를 각각 생성하세요:\n"
+            + f"- 다음 주제를 하나씩 포함하거나 종합적으로 반영하여 질문 {count}개를 각각 생성하세요:\n"
             + "  1. 실수에 대한 책임 인식\n"
             + "  2. 윤리적 딜레마 상황\n"
             + "  3. 압박 상황에서의 감정 반응\n"
@@ -105,7 +107,7 @@ def generate_json_pressure_prompt_5(job, company):
 
 # ========================================================================== 인성 면접 프롬프트 ==========================================================================================
 
-def generate_json_personality_prompt_5(job, company):
+def generate_json_personality_prompt_5(job, company, count):
     # 선택지 정의
     tones = [
         "공감하는", "다정한", "신중한", "유연한", "진솔한", "차분한", "격려하는", "이해심 깊은",
@@ -149,21 +151,38 @@ def generate_json_personality_prompt_5(job, company):
 
     # 프롬프트 생성
     prompt = (
-            f"{tone} 스타일의 **인성을 파악하기 위한 면접 질문**을 5개 생성해주세요.\n"
+            f"{tone} 스타일의 **인성을 파악하기 위한 면접 질문**을 총 {count}개 생성해주세요.\n"
             + (f"지원자는 '{company}' 기업에 처음 지원한 상태이며, 재직 경험은 없습니다.\n" if company else "")
             + (f"지원자가 희망하는 직무는 {job}입니다.\n" if job else "")
             + f"- 면접관 역할: {role}\n"
             + f"- 질문 목적: {intent}\n"
             + f"- 질문 난이도: {difficulty}\n"
-            + "- 각 질문은 반드시 **서로 다른 주제**를 다뤄야 하며, 표현만 다르고 의미가 유사한 질문은 절대 포함하지 마세요.\n"
-            + "- 다음 주제 중 각기 다른 5개를 선택하여 사용하세요: 실패, 갈등, 리더십, 윤리, 책임감, 협업, 판단력, 적응력, 감정조절\n"
+            + "- 각 질문은 반드시 **서로 다른 주제**를 다양하게 포함해야 하며, 표현만 다르고 의미가 유사한 질문은 절대 포함하지 마세요.\n"
+            + "- 다음 주제들을 **종합적으로 분산**시켜 사용하세요: 실패, 갈등, 리더십, 윤리, 책임감, 협업, 판단력, 적응력, 감정조절\n"
             + "- 각 질문은 지원자의 **구체적인 경험과 행동 방식, 가치관**을 반드시 끌어낼 수 있어야 합니다.\n"
             + "- 질문은 단편적인 감정 표현에 머물지 않고, **상황 설명 → 판단 또는 행동 → 결과 또는 교훈**을 유도하는 복합적 구조를 지녀야 합니다.\n"
             + "출력 형식: JSON 배열\n"
             + "```json\n"
-            + "{ 'questions': [\"질문 1\", \"질문 2\", \"질문 3\", \"질문 4\", \"질문 5\"] }\n"
+            + "{ \"questions\": [\"질문 1\", \"질문 2\", ..., \"질문 {count}\"] }\n"
             + "```"
     )
+
+    # prompt = (
+    #         f"{tone} 스타일의 **인성을 파악하기 위한 면접 질문**을 5개 생성해주세요.\n"
+    #         + (f"지원자는 '{company}' 기업에 처음 지원한 상태이며, 재직 경험은 없습니다.\n" if company else "")
+    #         + (f"지원자가 희망하는 직무는 {job}입니다.\n" if job else "")
+    #         + f"- 면접관 역할: {role}\n"
+    #         + f"- 질문 목적: {intent}\n"
+    #         + f"- 질문 난이도: {difficulty}\n"
+    #         + "- 각 질문은 반드시 **서로 다른 주제**를 다뤄야 하며, 표현만 다르고 의미가 유사한 질문은 절대 포함하지 마세요.\n"
+    #         + "- 다음 주제 중 각기 다른 5개를 선택하여 사용하세요: 실패, 갈등, 리더십, 윤리, 책임감, 협업, 판단력, 적응력, 감정조절\n"
+    #         + "- 각 질문은 지원자의 **구체적인 경험과 행동 방식, 가치관**을 반드시 끌어낼 수 있어야 합니다.\n"
+    #         + "- 질문은 단편적인 감정 표현에 머물지 않고, **상황 설명 → 판단 또는 행동 → 결과 또는 교훈**을 유도하는 복합적 구조를 지녀야 합니다.\n"
+    #         + "출력 형식: JSON 배열\n"
+    #         + "```json\n"
+    #         + "{ 'questions': [\"질문 1\", \"질문 2\", \"질문 3\", \"질문 4\", \"질문 5\"] }\n"
+    #         + "```"
+    # )
 
     print(prompt) # 확인용 추후 제거
 
@@ -171,7 +190,7 @@ def generate_json_personality_prompt_5(job, company):
 
 # ========================================================================== 심츰기술 면접 프롬프트 ==========================================================================================
 
-def generate_json_technical_prompt_5(job, company):
+def generate_json_technical_prompt_5(job, company, count):
 
     business_area = get_business_area(company)
 
@@ -200,7 +219,7 @@ def generate_json_technical_prompt_5(job, company):
     difficulty = random.choice(difficulties)
 
     prompt = (
-        f"{tone} 스타일의 **기술 심층 면접 질문**을 5개 생성해주세요.\n"
+        f"{tone} 스타일의 **기술 심층 면접 질문**을 {count}개 생성해주세요.\n"
         + (f"지원자는 '{company}' 기업에 지원하였으며, 이 회사에서의 재직 경험은 없습니다.\n" if company else "")
         + (f"지원자가 희망하는 직무는 '{job}'입니다.\n" if job else "")
         + (f"'{company}'의 주요 사업 영역은 '{business_area}'입니다.\n" if business_area else "")
@@ -224,7 +243,7 @@ def generate_json_technical_prompt_5(job, company):
 
 # ========================================================================== 상황 면접 프롬프트 ==========================================================================================
 
-def generate_json_situational_prompt_5(job, company):
+def generate_json_situational_prompt_5(job, company, count):
     business_area = get_business_area(company)
 
     tones = [
@@ -251,7 +270,7 @@ def generate_json_situational_prompt_5(job, company):
     difficulty = random.choice(difficulties)
 
     prompt = (
-        f"{tone} 스타일의 **상황 기반 면접 질문**을 5개 생성해주세요.\n"
+        f"{tone} 스타일의 **상황 기반 면접 질문**을 {count}개 생성해주세요.\n"
         + (f"지원자는 '{company}' 기업에 지원하였으며, 이 회사에서의 재직 경험은 없습니다.\n" if company else "")
         + (f"지원자가 희망하는 직무는 '{job}'입니다.\n" if job else "")
         + (f"'{company}'의 주요 사업 영역은 '{business_area}'입니다.\n" if business_area else "")

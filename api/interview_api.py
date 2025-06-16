@@ -19,6 +19,7 @@ interview_api = APIRouter()
 class InterviewRequest(BaseModel):
     job_role: Optional[str] = None
     company : Optional[str] = None
+    count   : Optional[int] = None
 
 class InterviewEvaluationRequest(BaseModel):
     questions: list[str]
@@ -33,7 +34,7 @@ class InterviewEvaluationRequest(BaseModel):
 
 @interview_api.post("/pressure_interview")
 async def generate_pressure_interview(request:InterviewRequest):
-    prompt = generate_json_pressure_prompt_5(request.job_role, request.company)
+    prompt = generate_json_pressure_prompt_5(request.job_role, request.company, request.count)
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-nano",
@@ -62,7 +63,7 @@ async def generate_pressure_interview(request:InterviewRequest):
 @interview_api.post("/personality_interview")
 async def generate_personality_interview(reqeust:InterviewRequest):
 
-    prompt = generate_json_personality_prompt_5(reqeust.job_role, reqeust.company)
+    prompt = generate_json_personality_prompt_5(reqeust.job_role, reqeust.company, reqeust.count)
 
     try:
         response = client.chat.completions.create(
@@ -92,7 +93,7 @@ async def generate_personality_interview(reqeust:InterviewRequest):
 @interview_api.post("/technical_interview")
 async def generate_technical_interview(reqeust:InterviewRequest):
 
-    prompt = generate_json_technical_prompt_5(reqeust.job_role, reqeust.company)
+    prompt = generate_json_technical_prompt_5(reqeust.job_role, reqeust.company, reqeust.count)
 
     try:
         response = client.chat.completions.create(
@@ -121,7 +122,7 @@ async def generate_technical_interview(reqeust:InterviewRequest):
 @interview_api.post("/situational_interview")
 async def generate_situational_interview(reqeust:InterviewRequest):
 
-    prompt = generate_json_situational_prompt_5(reqeust.job_role, reqeust.company)
+    prompt = generate_json_situational_prompt_5(reqeust.job_role, reqeust.company, reqeust.count)
 
     try:
         response = client.chat.completions.create(
@@ -169,6 +170,50 @@ async def generate_evaluation(dto:InterviewEvaluationRequest):
 
     except Exception as e:
         return {"error": f"API 요청 실패: {str(e)}"}
+
+# ========================================================================== 커스텀 면접 평가 API ==========================================================================================
+
+@interview_api.post("/custom_evaluation")
+async def generate_custom_evaluation(dto: InterviewEvaluationRequest):
+    # TODO 개발중
+    questions = dto.questions
+    answers = dto.answers
+
+    prompt = f"""
+    이거는 뭐시기 저시기 질문임.
+    """
+    
+    # prompt 를 generate_json_evaluation() 여기 매개변수로 추가 -> {qa_block} 처럼 qa_customBlock로 추가
+
+    # 질문과 답변 붙이기
+    for i in range(len(questions)):
+        prompt += f"Q{i+1}: {questions[i]}\n"
+        if i < len(answers):
+            prompt += f"A{i+1}: {answers[i]}\n"
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-nano",
+            messages=[
+                {"role": "system", "content": "You are a professional AI that evaluates and provides feedback on interview responses."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1500,
+            temperature=0.8
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        # JSON 추출
+        json_match = re.search(r"\{[\s\S]+\}", content)
+        if json_match:
+            parsed = json.loads(json_match.group())
+            return parsed
+        else:
+            return {"error": "GPT 응답에서 JSON을 찾지 못했습니다.", "raw": content}
+
+    except Exception as e:
+        return {"error": f"GPT API 요청 실패: {str(e)}"}
 
 # ========================================================================== 테스트 API ==========================================================================================
 
