@@ -96,9 +96,9 @@ async def generate_pressure_interview(request:InterviewRequest):
 # ========================================================================== 인성 면접 API ==========================================================================================
 
 @interview_api.post("/personality_interview")
-async def generate_personality_interview(reqeust:InterviewRequest):
-    cnt = reqeust.cnt if reqeust.cnt is not None else 5
-    prompt = generate_json_personality_prompt(reqeust.job_role, reqeust.company, cnt)
+async def generate_personality_interview(request:InterviewRequest):
+    cnt = request.cnt if request.cnt is not None else 5
+    prompt = generate_json_personality_prompt(request.job_role, request.company, cnt)
 
     try:
         response = client.chat.completions.create(
@@ -126,9 +126,9 @@ async def generate_personality_interview(reqeust:InterviewRequest):
 # ========================================================================== 기술심층 면접 API ==========================================================================================
 
 @interview_api.post("/technical_interview")
-async def generate_technical_interview(reqeust:InterviewRequest):
-    cnt = reqeust.cnt if reqeust.cnt is not None else 5
-    prompt = generate_json_technical_prompt(reqeust.job_role, reqeust.company, cnt)
+async def generate_technical_interview(request:InterviewRequest):
+    cnt = request.cnt if request.cnt is not None else 5
+    prompt = generate_json_technical_prompt(request.job_role, request.company, cnt)
 
     try:
         response = client.chat.completions.create(
@@ -155,9 +155,9 @@ async def generate_technical_interview(reqeust:InterviewRequest):
 # ========================================================================== 상황 면접 평가 API ==========================================================================================
 
 @interview_api.post("/situational_interview")
-async def generate_situational_interview(reqeust:InterviewRequest):
-    cnt = reqeust.cnt if reqeust.cnt is not None else 5
-    prompt = generate_json_situational_prompt(reqeust.job_role, reqeust.company, cnt)
+async def generate_situational_interview(request:InterviewRequest):
+    cnt = request.cnt if request.cnt is not None else 5
+    prompt = generate_json_situational_prompt(request.job_role, request.company, cnt)
 
     try:
         response = client.chat.completions.create(

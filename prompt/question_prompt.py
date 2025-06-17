@@ -260,7 +260,7 @@ def generate_json_pressure_prompt(job, company, cnt):
             + f"- 면접관 역할: {role}\n"
             + f"- 질문 목적: {intent}\n"
             + f"- 질문 난이도: {difficulty}\n"
-            + f"- 다음 주제를 하나씩 포함한 질문 {cnt}개를 생성하세요:\n"
+            + f"- 반드시 각 질문마다 다음 주제(1번 부터 5번까지)중에 하나를 골라 이를 포함한 질문 {cnt}개를 생성하세요:\n"
             + "  1. 실수에 대한 책임 인식\n"
             + "  2. 윤리적 딜레마 상황\n"
             + "  3. 압박 상황에서의 감정 반응\n"
@@ -465,7 +465,7 @@ def generate_json_evaluation(
     qa_customBlock = "() 소괄호 안의 질문 주제에 따라 응답 내용을 객관적으로 평가 해주세요. 소괄호가 없다면 질문 주제와 응답 내용을 중점으로 평가해주세요."
     for i, (question, answer, time) in enumerate(zip(questions, answers, times), 1):
         qa_block += f"질문{i:02}: {question}\n"
-        qa_block += f"걸린 시간: {time}분\n"
+        qa_block += f"질문{i:02}에 답변하는데 까지 걸린 시간: {time}분\n"
         qa_block += f"답변{i:02}: {answer}\n\n"
 
     # prev_badpoints 설명 블록 조건 처리
@@ -481,6 +481,11 @@ def generate_json_evaluation(
         이전 지적사항이 없는 경우, `state01 ~ state0{len(prev_badpoints) if prev_badpoints else 1}` 및 `cause01 ~ cause0{len(prev_badpoints) if prev_badpoints else 1}` 항목에는 null 값을 입력해주세요.
         """
 
+    time_section = f"""
+    - 시간: 0~10점
+    - 종합 평균 소요 시간 (3 ~ 10점, {limit_time}분 시간 제한)
+    """ if limit_time is not None else ""
+
     # 프롬프트 최종 구성
     prompt = f"""
     다음은 {q_num}개의 면접 질문과 그에 대한 지원자의 답변입니다.  
@@ -492,8 +497,7 @@ def generate_json_evaluation(
     - 자기 성찰: 0~18점
     - 대응 방식: 0~18점
     - 전달력: 0~18점
-    - 시간: 0~10점
-    - 종합 평균 소요 시간 (3 ~ 10점, {limit_time}분 시간 제한)
+    {time_section}
     
     점수계산 시 주의할 것
     - 시간 초과 or 0.0분이면 3점
