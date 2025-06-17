@@ -461,6 +461,7 @@ def generate_json_evaluation(
 
     # 질문/답변 블록 구성
     qa_block = ""
+    qa_customBlock = "() 소괄호 안의 질문 주제에 따라 응답 내용을 객관적으로 평가 해주세요. 소괄호가 없다면 질문 주제와 응답 내용을 중점으로 평가해주세요."
     for i, (question, answer, time) in enumerate(zip(questions, answers, times), 1):
         qa_block += f"질문{i:02}: {question}\n"
         qa_block += f"걸린 시간: {time}분\n"
@@ -539,6 +540,7 @@ def generate_json_evaluation(
     면접 질문 및 답변은 다음과 같습니다:
 
     {qa_block}
+    {qa_customBlock}
     """.strip()
 
     print(prompt)
