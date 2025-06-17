@@ -202,7 +202,7 @@ def generate_json_general_prompt(job, company, q_number):
 
 # ========================================================================== 압박 면접 프롬프트 ==========================================================================================
 
-def generate_json_pressure_prompt(job, company):
+def generate_json_pressure_prompt(job, company, cnt):
     tones = [
         "도발적인",
         "중립적인",
@@ -252,13 +252,13 @@ def generate_json_pressure_prompt(job, company):
     difficulty = random.choice(difficulties)
 
     prompt = (
-            f"{tone} 스타일의 **압박 면접 질문**을 5개 생성해주세요.\n"
+            f"반드시 {tone} 스타일의 **압박 면접 질문**을 {cnt}개 생성해주세요.\n"
             + (f"지원자는 '{company}' 기업에 지원하였으며, 해당 기업에서의 재직 경험은 없습니다.\n" if company else "")
             + (f"지원자가 희망하는 직무는 {job}입니다.\n" if job else "")
             + f"- 면접관 역할: {role}\n"
             + f"- 질문 목적: {intent}\n"
             + f"- 질문 난이도: {difficulty}\n"
-            + "- 다음 주제를 하나씩 포함한 질문 5개를 각각 생성하세요:\n"
+            + f"- 다음 주제를 하나씩 포함한 질문 {cnt}개를 생성하세요:\n"
             + "  1. 실수에 대한 책임 인식\n"
             + "  2. 윤리적 딜레마 상황\n"
             + "  3. 압박 상황에서의 감정 반응\n"
@@ -268,7 +268,7 @@ def generate_json_pressure_prompt(job, company):
             + "- 각 질문은 다음 형식을 따르세요: 상황 설명 → 선택지 제시 → 이유 또는 대응 방식을 묻는 형태.\n"
             + "출력 형식: JSON 배열\n"
             + "```json\n"
-            + "{ \"questions\": [\"질문 1\", \"질문 2\", \"질문 3\", \"질문 4\", \"질문 5\"] }\n"
+            + "{ \"questions\": [\"질문 1\", \"질문 2\", \"질문 3\",...] }\n"
             + "```"
     )
 
@@ -334,7 +334,7 @@ def generate_json_personality_prompt(job, company):
             + "- 질문은 단편적인 감정 표현에 머물지 않고, **상황 설명 → 판단 또는 행동 → 결과 또는 교훈**을 유도하는 복합적 구조를 지녀야 합니다.\n"
             + "출력 형식: JSON 배열\n"
             + "```json\n"
-            + "{ 'questions': [\"질문 1\", \"질문 2\", \"질문 3\", \"질문 4\", \"질문 5\"] }\n"
+            + "{ 'questions': [\"질문 1\", \"질문 2\", \"질문 3\", \"질문 4\", \"질문 5\"],... }\n"
             + "```"
     )
 

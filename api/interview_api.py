@@ -19,6 +19,7 @@ interview_api = APIRouter()
 class InterviewRequest(BaseModel):
     job_role: Optional[str] = None
     company : Optional[str] = None
+    cnt : Optional[int] = 5
 
 class InterviewEvaluationRequest(BaseModel):
     questions: list[str]
@@ -66,7 +67,7 @@ async def generate_general_interview(request:InterviewRequest):
 
 @interview_api.post("/pressure_interview")
 async def generate_pressure_interview(request:InterviewRequest):
-    prompt = generate_json_pressure_prompt(request.job_role, request.company)
+    prompt = generate_json_pressure_prompt(request.job_role, request.company, request.cnt)
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-nano",
