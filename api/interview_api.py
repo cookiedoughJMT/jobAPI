@@ -19,7 +19,7 @@ interview_api = APIRouter()
 class InterviewRequest(BaseModel):
     job_role: Optional[str] = None
     company : Optional[str] = None
-    cnt : Optional[int] = 5
+    cnt : Optional[int] = None
 
 class InterviewEvaluationRequest(BaseModel):
     questions: list[str]
@@ -33,7 +33,8 @@ class InterviewEvaluationRequest(BaseModel):
 
 @interview_api.post("/general_interview")
 async def generate_general_interview(request:InterviewRequest):
-    prompt, modes = generate_json_general_prompt(request.job_role, request.company, 7)
+    cnt = request.cnt if request.cnt is not None else 5
+    prompt, modes = generate_json_general_prompt(request.job_role, request.company, cnt)
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-nano",
@@ -67,7 +68,8 @@ async def generate_general_interview(request:InterviewRequest):
 
 @interview_api.post("/pressure_interview")
 async def generate_pressure_interview(request:InterviewRequest):
-    prompt = generate_json_pressure_prompt(request.job_role, request.company, request.cnt)
+    cnt = request.cnt if request.cnt is not None else 5
+    prompt = generate_json_pressure_prompt(request.job_role, request.company, cnt)
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-nano",
@@ -95,8 +97,8 @@ async def generate_pressure_interview(request:InterviewRequest):
 
 @interview_api.post("/personality_interview")
 async def generate_personality_interview(reqeust:InterviewRequest):
-
-    prompt = generate_json_personality_prompt(reqeust.job_role, reqeust.company)
+    cnt = reqeust.cnt if reqeust.cnt is not None else 5
+    prompt = generate_json_personality_prompt(reqeust.job_role, reqeust.company, cnt)
 
     try:
         response = client.chat.completions.create(
@@ -125,8 +127,8 @@ async def generate_personality_interview(reqeust:InterviewRequest):
 
 @interview_api.post("/technical_interview")
 async def generate_technical_interview(reqeust:InterviewRequest):
-
-    prompt = generate_json_technical_prompt(reqeust.job_role, reqeust.company)
+    cnt = reqeust.cnt if reqeust.cnt is not None else 5
+    prompt = generate_json_technical_prompt(reqeust.job_role, reqeust.company, cnt)
 
     try:
         response = client.chat.completions.create(
@@ -154,8 +156,8 @@ async def generate_technical_interview(reqeust:InterviewRequest):
 
 @interview_api.post("/situational_interview")
 async def generate_situational_interview(reqeust:InterviewRequest):
-
-    prompt = generate_json_situational_prompt(reqeust.job_role, reqeust.company)
+    cnt = reqeust.cnt if reqeust.cnt is not None else 5
+    prompt = generate_json_situational_prompt(reqeust.job_role, reqeust.company, cnt)
 
     try:
         response = client.chat.completions.create(
