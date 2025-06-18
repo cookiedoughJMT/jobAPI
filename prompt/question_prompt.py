@@ -255,6 +255,7 @@ def generate_json_pressure_prompt(job, company, cnt):
 
     prompt = (
             f"반드시 {tone} 스타일의 **압박 면접 질문**을 {cnt}개 생성해주세요.\n"
+            + "너무 길지 않게 생성 하되 아래 요구 사항을 최대한 수용 하여 질문을 만들어 주시고 반드시 undefinde를 반환 하지 말아 주세요."
             + (f"지원자는 '{company}' 기업에 지원하였으며, 해당 기업에서의 재직 경험은 없습니다.\n" if company else "")
             + (f"지원자가 희망하는 직무는 {job}입니다.\n" if job else "")
             + f"- 면접관 역할: {role}\n"
