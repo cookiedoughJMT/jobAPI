@@ -484,7 +484,9 @@ def generate_json_evaluation(
     time_section = f"""
     - 시간: 0~10점
     - 종합 평균 소요 시간 (3 ~ 10점, {limit_time}분 시간 제한)
-    """ if limit_time is not None else ""
+    """ if limit_time is not None else f"""
+    - 시간: 10점
+    """
 
     # 프롬프트 최종 구성
     prompt = f"""
