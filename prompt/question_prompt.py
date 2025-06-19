@@ -160,6 +160,21 @@ def generate_radom_question_types(total_questions):
 
     return assigned
 
+#=========================================이전 평가 분석 block생성 함수 ===============================
+
+def generate_prev_badpoint_clause(prev_badpoints: list[str]) -> str:
+    if prev_badpoints:
+        clause = ""
+        for i, point in enumerate(prev_badpoints, start=1):
+            clause += f'-state{i:02}: 해당 지원자는 이전 답변에서 "{point}" 항목에 대해 지적받으셨습니다. 이번 답변을 참고하여 얼마나 개선되었는지를 (좋아짐 / 유사함 / 나빠짐) 중 하나로 선택해 주세요.\n'
+            clause += f'-cause{i:02}: 위 상태(state{i:02}) 판단의 근거를 지원자의 이번 답변에서 구체적인 문장과 함께 설명해 주세요.\n'
+        #end for
+        clause += f"위 state와 cause는 반드시 각각 {len(prev_badpoints)}개씩 작성해 주세요. 누락 없이 출력되어야 하며, 동일하거나 반복적인 내용 없이 다양하게 작성해 주세요"
+        return clause
+    else:
+        return "-state: 반드시null반환\n-cause: 반드시null반환\n"
+
+
 # ========================================================================== 통합 면접 프롬프트 ==========================================================================================
 
 def generate_json_general_prompt(job, company, q_number):
@@ -457,98 +472,201 @@ def generate_json_evaluation(
         limit_time: float,
         goodorbad_num: int,
         improvment_num: int,
-        prev_badpoints: list[str] = None
+        alternativemode: str,
+        modes: list[str],
+        prev_badpoints: list[str] = None,
 ) -> str:
     q_num = len(questions)
 
     # 질문/답변 블록 구성
-    qa_block = ""
-    qa_customBlock = "() 소괄호 안의 질문 주제에 따라 응답 내용을 객관적으로 평가 해주세요. 소괄호가 없다면 질문 주제와 응답 내용을 중점으로 평가해주세요."
-    for i, (question, answer, time) in enumerate(zip(questions, answers, times), 1):
-        qa_block += f"질문{i:02}: {question}\n"
-        qa_block += f"질문{i:02}에 답변하는데 까지 걸린 시간: {time}분\n"
-        qa_block += f"답변{i:02}: {answer}\n\n"
+    qa_block = {"일반":f"""
+    아래의 점수기준을 참고하여 아래 압박 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+    - 질문 적합성 (30점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+    - 구체성 (25점): 실제 경험이나 구체적 사례가 포함되었는가?
+    - 전달력 (15점): 논리적이고 명확한 문장으로 표현되었는가?
+    - 자기성찰/인식 (15점): 자신의 태도, 행동에 대한 통찰이 있는가?
+    - 시간 적절성 (15점): 답변 시간(분)이 충분했는가? (제한 시간은 {limit_time}분이다.)
+    """,
+                "압박":f"""
+    아래의 점수기준을 참고하여 아래 압박 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+    - 질문 적합성 (25점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+    - 구체성 (20점): 실제 경험이나 구체적 사례가 포함되었는가?
+    - 전달력 (20점): 논리적이고 명확한 문장으로 표현되었는가?
+    - 자기성찰/인식 (10점): 자신의 태도, 행동에 대한 통찰이 있는가?
+    - 시간 적절성 (25점): 답변 시간(분)이 충분했는가? (제한 시간은 {limit_time}분이다.)
+    """,
 
-    # prev_badpoints 설명 블록 조건 처리
-    prev_badpoint_clause = ""
-    if prev_badpoints:
-        badpoints_joined = ', '.join(f'"{p}"' for p in prev_badpoints)
-        prev_badpoint_clause = f"""
-        또한 이전 답변에서 지적받은 {badpoints_joined}에 대해  
-        이번 답변에서는 상태가 "좋아짐 / 유사함 / 나빠짐" 중 어떤지, 그 이유와 함께 분석해주세요.
-        """
+                "인성":f"""
+     아래의 점수기준을 참고하여 아래 인성 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+    - 질문 적합성 (30점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+    - 구체성 (20점): 실제 경험이나 구체적 사례가 포함되었는가?
+    - 전달력 (20점): 논리적이고 명확한 문장으로 표현되었는가?
+    - 자기성찰/인식 (20점): 자신의 태도, 행동에 대한 통찰이 있는가?
+    - 시간 적절성 (10점): 답변 시간(분)이 충분했는가? (제한 시간은 {limit_time}분이다.)
+    """,
+
+                "기술":f"""
+      아래의 점수기준을 참고하여 아래 기술 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+    - 질문 적합성 (30점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+    - 구체성 (30점): 실제 경험이나 구체적 사례가 포함되었는가?
+    - 전달력 (15점): 논리적이고 명확한 문장으로 표현되었는가?
+    - 자기성찰/인식 (10점): 자신의 태도, 행동에 대한 통찰이 있는가?
+    - 시간 적절성 (15점): 답변 시간(분)이 충분했는가? (제한 시간은 {limit_time}분이다.)
+    """,
+
+                "상황":f"""
+      아래의 점수기준을 참고하여 아래 상황 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+    - 질문 적합성 (25점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+    - 구체성 (25점): 실제 경험이나 구체적 사례가 포함되었는가?
+    - 전달력 (15점): 논리적이고 명확한 문장으로 표현되었는가?
+    - 자기성찰/인식 (20점): 자신의 태도, 행동에 대한 통찰이 있는가?
+    - 시간 적절성 (15점): 답변 시간(분)이 충분했는가? (제한 시간은 {limit_time}분이다.)
+    """}
+
+    qa_block_nonetime = {"일반": f"""
+        아래의 점수기준을 참고하여 아래 압박 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+        - 질문 적합성 (35점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+        - 구체성 (30점): 실제 경험이나 구체적 사례가 포함되었는가?
+        - 전달력 (20점): 논리적이고 명확한 문장으로 표현되었는가?
+        - 자기성찰/인식 (15점): 자신의 태도, 행동에 대한 통찰이 있는가?
+        """,
+                "압박": f"""
+        아래의 점수기준을 참고하여 아래 압박 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+        - 질문 적합성 (35점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+        - 구체성 (25점): 실제 경험이나 구체적 사례가 포함되었는가?
+        - 전달력 (25점): 논리적이고 명확한 문장으로 표현되었는가?
+        - 자기성찰/인식 (15점): 자신의 태도, 행동에 대한 통찰이 있는가?
+        """,
+
+                "인성": f"""
+         아래의 점수기준을 참고하여 아래 인성 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+        - 질문 적합성 (35점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+        - 구체성 (20점): 실제 경험이나 구체적 사례가 포함되었는가?
+        - 전달력 (20점): 논리적이고 명확한 문장으로 표현되었는가?
+        - 자기성찰/인식 (25점): 자신의 태도, 행동에 대한 통찰이 있는가?
+        """,
+
+                "기술": f"""
+          아래의 점수기준을 참고하여 아래 기술 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+        - 질문 적합성 (35점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+        - 구체성 (35점): 실제 경험이나 구체적 사례가 포함되었는가?
+        - 전달력 (20점): 논리적이고 명확한 문장으로 표현되었는가?
+        - 자기성찰/인식 (10점): 자신의 태도, 행동에 대한 통찰이 있는가?
+        """,
+
+                "상황": f"""
+          아래의 점수기준을 참고하여 아래 상황 면접 질문에 대한 답변을 1~100점 사이에 정수형태로 평가해줘
+        - 질문 적합성 (30점): 질문의 의도를 제대로 파악하고 핵심을 답변했는가?
+        - 구체성 (30점): 실제 경험이나 구체적 사례가 포함되었는가?
+        - 전달력 (20점): 논리적이고 명확한 문장으로 표현되었는가?
+        - 자기성찰/인식 (20점): 자신의 태도, 행동에 대한 통찰이 있는가?
+        """}
+
+    qa_customblock = ""
+
+    selected_qa_block = qa_block_nonetime if limit_time == 0.0 else qa_block
+
+    if alternativemode == "커스텀":
+        for i in range(q_num):
+            mode = modes[i]
+            block = selected_qa_block[mode]
+            block += f"""
+                    질문: {questions[i]}
+                    """
+            block += f"""걸린 시간: {times[i]}분""" if limit_time != 0.0 else ""
+            block += f"""
+                    답변: {answers[i]}
+                    """
+            qa_customblock += block + "\n"
+
     else:
-        prev_badpoint_clause = f"""
-        이전 지적사항이 없는 경우, `state01 ~ state0{len(prev_badpoints) if prev_badpoints else 1}` 및 `cause01 ~ cause0{len(prev_badpoints) if prev_badpoints else 1}` 항목에는 null 값을 입력해주세요.
-        """
+        for i in range(q_num):
+            block = selected_qa_block[alternativemode]
+            block += f"""
+                    질문: {questions[i]}
+                    """
+            block += f"""걸린 시간: {times[i]}분""" if limit_time != 0.0 else ""
+            block += f"""
+                    답변: {answers[i]}
+                    """
+            qa_customblock += block + "\n"
+    # end if
 
-    time_section = f"""
-    - 시간: 0~10점
-    - 종합 평균 소요 시간 (3 ~ 10점, {limit_time}분 시간 제한)
-    """ if limit_time is not None else f"""
-    - 시간: 10점
-    """
+    good_bad_block = ""
+    for i in range(goodorbad_num):
+        idx = f"{i + 1:02}"
+        good_bad_block += f"-good_summary{idx}: 전체적으로 봤을 때 지원자의 답변의 강점을 한 줄로 요약해 주세요. **답변에 강점이 전혀 없는 경우 'null'로 작성해 주세요.**\n"
+        good_bad_block += f"-good_description{idx}: 위 good_summary{idx}에 대한 구체적인 이유를 친절하고 정중하게 작성해 주세요. **good_summary가 'null'인 경우 'null'로 작성해 주세요.**\n"
+        good_bad_block += f"-bad_summary{idx}: 전체적으로 봤을 때 지원자의 답변에서 개선이 필요한 점을 한 줄로 요약해 주세요. **개선할 점이 전혀 없는 경우 'null'로 작성해 주세요.**\n"
+        good_bad_block += f"-bad_description{idx}: 위 bad_summary{idx}에 대한 구체적인 이유를 친절하고 정중하게 작성해 주세요. **bad_summary가 'null'인 경우 'null'로 작성해 주세요.**\n"
+
+    good_bad_block += (
+        f"위 항목들은 반드시 각각 총 {goodorbad_num}개씩 작성해 주세요. 누락 없이 출력되어야 하며, "
+        f"동일하거나 반복적인 내용 없이 다양하게 작성해 주세요.\n"
+    )
+
+    improvment_block = ""
+    for i in range(improvment_num):
+        idx = f"{i + 1:02}"
+        improvment_block += f"-improvment{idx}: 지원자가 다음 면접에서 100점을 받기 위해 어떤 연습을 하면 좋을지 구체적이고 친절하게 작성해 주세요.\n"
+    improvment_block += f"위 improvment 항목은 반드시 총 {improvment_num}개로 구성되어야 하며, 누락 없이 출력되어야 하며, 동일하거나 반복적인 내용 없이 다양하게 작성해 주세요\n"
+    # end for
+
+    solution_block = ""
+    for i in range(q_num):
+        idx = f"{i + 1:02}"
+        solution_block += f"-solution{idx}: 지원자에게 자연스럽고 실질적인 피드백을 제공해 주세요. 반복된 문구 없이, 직접 조언하듯 작성해 주세요.\n"
+    solution_block += f"위 solution 항목은 반드시 총 {q_num}개로 구성되어야 하며, 누락 없이 출력되어야 하며, 동일하거나 반복적인 내용 없이 다양하게 작성해 주세요\n"
+    # end for
+
+
+    score_lines = ""
+    for i in range(1, q_num + 1):
+        score_lines += f'-score{i:02}: 해당 질문({i})에 대한 점수를 1~100 사이의 정수로 평가해 주세요.\n'
+    score_lines += f'-score: 위 score01 ~ score{q_num:02} 항목의 평균값을 계산하여 최종 점수로 작성해 주세요.\n'
+    # end for
 
     # 프롬프트 최종 구성
     prompt = f"""
-    다음은 {q_num}개의 면접 질문과 그에 대한 지원자의 답변입니다.  
-    각 질문별로 개별 평가하는 것이 아니라, **전체 답변의 흐름과 내용 전반을 평가**해주세요.
-
-    평가는 다음 요소들을 기준으로 진행됩니다:
-    - 질문 이해도: 0~18점
-    - 구체성: 0~18점
-    - 자기 성찰: 0~18점
-    - 대응 방식: 0~18점
-    - 전달력: 0~18점
-    {time_section}
+    {qa_customblock}
     
-    점수계산 시 주의할 것
-    - 시간 초과 or 0.0분이면 3점
-    - 무의미한 답변이 있는 경우 해당 항목에서 0점 또는 감점
-    - 반드시 전체 답변 중 2개 이상 무응답또는 무의미한 답변인 경우 총점은 15점을 넘기지 않도록 조정
+    아래는 실제로 응답해야 하는 항목에 관한 설명이며 반드시 모두 **지원자에게 직접 전달하듯** 작성하고 어투는 **친절하고 정중한 존댓말**을 사용하고, **무조건적인 칭찬이나 비난보다는 개선 방향과 구체적인 예시를 중심으로** 서술해줘
+    - 예: "~할 수 있었을 것입니다.", "~라는 점에서 강점이 있습니다.", "다음에는 ~하는 연습을 해보시면 좋겠습니다."
+    - 지원자의 답변이 'ㅇ', '...', '잘 모르겠습니다', '무의미한 단어 반복' 또는 이에 준하는 내용일 경우, 해당 질문은 10점 이하로 평가해 주세요.
+    - 반드시 답변의 **내용과 논리적 연결성**을 판단 기준으로 삼고, 길이나 문장 수가 아니라 의미를 기반으로 점수를 부여해 주세요.
+
     
-    무의미한 답변 예시
-    - "ㅇ","ㅁ","맞습니다.","그렇습니다.","아닙니다."등 한글자 또는 한단어로 쓰는 경우
-    - "모르겠습니다"
-    - "없습니다" (맥락 없이 단답형으로만 답한 경우)
-
-    총점은 100점 만점으로 계산되며, 그 점수의 이유를 `reason`에 작성해주세요.`reason` 문장은 반드시 정중한 문장으로 마무리해주세요.  
-    예: "~이 부족하여 설득력이 떨어집니다.", "~이 개선될 필요가 있습니다.", "~이 필요합니다." 등
-
-    그리고 전반적인 강점과 개선점을 요약 및 설명 형식으로 각각 {goodorbad_num}가지씩 작성해주세요.
-    good_summary01 ~ good_summary0{goodorbad_num} 항목과 good_description01 ~ good_description0{goodorbad_num} 항목에는 반드시 **지원자의 긍정적인 측면, 장점, 강점으로 해석할 수 있는 요소만** 작성해주세요.만약 긍정적으로 평가할 요소가 거의 없다면 null로 처리 해주세요.
+    {score_lines}
+    -reason: 각 질문마다 평가했던 점수가 어떤 이유로 나오게 된 것인지 자세하게 알려줘
+    {good_bad_block}
+    {generate_prev_badpoint_clause(prev_badpoints)}
+    {solution_block}
+    {improvment_block}
     
-    bad_summary01 ~ bad_summary0{goodorbad_num} 항목과 bad_description01 ~ bad_description0{goodorbad_num} 항목에는 반드시 **지원자의 부족한 부분, 아쉬운 점, 개선이 필요한 요소**를 구체적으로 작성해주세요.만약 특별히 지적할 만한 부족한 점이 없다고 판단되는 경우에는 해당 항목은 `null`로 처리해주세요.
-    
-    {prev_badpoint_clause}
-    마지막으로 각 질문에 대해 하나씩, 총 {q_num}개의 `solution01 ~ solution{q_num}` 항목을 작성해주세요.
-    각 solution은 해당 질문에 대한 답변을 보완하거나 개선하기 위한 **구체적이고 실질적인 조언**이어야 합니다.
-
-    또한 마지막에는 `improvment01 ~ improvment0{improvment_num}` 항목으로,  
-    **지원자가 다음 면접을 준비할 때 보완해야 할 구체적인 연습 방향이나 태도, 사고 방식 등 실질적인 개선 조언**을 작성해주세요.
-      
-    소요 시간이 기준인 {limit_time}분과 동일하더라도, 시간 내 **전달력**, **내용의 밀도**, **적절한 속도 조절**이 포함되어야만 시간 항목에서 긍정적 평가를 받을 수 있습니다.  
-    단순히 제한 시간을 초과하지 않았다는 이유만으로는 시간 평가에서 높은 점수를 주지 마세요.
-    
-    또한, 모든 답변 시간이 정확히 제한 시간과 같을 경우, 이는 오히려 **말이 늘어지거나 핵심 없이 시간을 맞춘 것일 수 있음**을 감안하여 주의 깊게 평가하세요.
-
-    반드시 아래 항목이 포함된 **JSON 형식**으로 출력하세요. 설명이나 코드블럭 없이 순수 JSON만 출력해주세요.
-
-    - score
-    - reason
-    - good_summary01 ~ good_summary0{goodorbad_num}
-    - good_description01 ~ good_description0{goodorbad_num}
-    - bad_summary01 ~ bad_summary0{goodorbad_num}
-    - bad_description01 ~ bad_description0{goodorbad_num}
-    - state01 ~ state0{len(prev_badpoints) if prev_badpoints else 1}
-    - cause01 ~ cause0{len(prev_badpoints) if prev_badpoints else 1}
-    - solution01 ~ solution0{q_num}
-    - improvment01 ~ improvment0{improvment_num}
-
-    면접 질문 및 답변은 다음과 같습니다:
-
-    {qa_block}
-    {qa_customBlock}
+    아래 JSON 형식의 응답을 반환하되, 반드시 **설명이나 코드블럭 없이 순수 JSON 문자열만 출력**하고 모든 응답은 반드시 자연스러운 존댓말(높임말) 형태로 작성해
+    ```json
+      {{
+        "score": 87,
+        "reason": "질문의 의도를.....",
+        "good_summary01": "강점 요약01",
+        ...
+        "good_description01": "강점 설명01",
+        ...
+        "bad_summary01": "개선점 요약01",
+        ...
+        "bad_description01": "개선점 설명01",
+        ...
+        "state01":"유사함",
+        ....
+        "cause01":"이전 답변에 대한 평가에 대한 이유01",
+        ....
+        "solution01":"질문01에 대한 방향성01",
+        "solution02":"질문02에 대한 방향성02",
+        ...
+        "improvment01":"100점을 향한 연습 추천01",
+        "improvment02":"100점을 향한 연습 추천02",
+        ....
+      }}
     """.strip()
 
     print(prompt)

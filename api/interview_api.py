@@ -29,6 +29,8 @@ class InterviewEvaluationRequest(BaseModel):
     goodorbad_num: int = c.EVAL_GOODORBAD
     improvment_num: int = c.EVAL_IMPROVMENT
     prev_badpoints: list[str] | None
+    alternativeMode: str
+    modes: list[str]
 # ========================================================================== 통합 면접 API==========================================================================================
 
 @interview_api.post("/general_interview")
@@ -186,7 +188,7 @@ async def generate_situational_interview(request:InterviewRequest):
 
 @interview_api.post("/evaluation")
 async def generate_evaluation(dto:InterviewEvaluationRequest):
-    prompt =  generate_json_evaluation(dto.questions, dto.answers, dto.times, dto.limit_time, dto.goodorbad_num, dto.improvment_num, dto.prev_badpoints)
+    prompt =  generate_json_evaluation(dto.questions, dto.answers, dto.times, dto.limit_time, dto.goodorbad_num, dto.improvment_num,  dto.alternativeMode, dto.modes, dto.prev_badpoints)
 
     try:
         response = client.chat.completions.create(
@@ -196,7 +198,7 @@ async def generate_evaluation(dto:InterviewEvaluationRequest):
                  "content": "You are a professional AI that evaluates and provides feedback on interview responses."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1000,
+            max_tokens=10000,
             temperature=0.8
         )
 
