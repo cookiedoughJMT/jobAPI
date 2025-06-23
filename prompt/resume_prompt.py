@@ -1,5 +1,5 @@
 
-
+# ================================== KTS ========================
 
 def generate_json_kts_prompt(
         keyword, personality
@@ -26,3 +26,51 @@ def generate_json_kts_prompt(
     }}
     """
 # end def
+
+# ==================================keywordextractor ========================
+
+def generate_json_keywordextractor_prompt(sentence: str, personality: str, type: str) -> str:
+    return f"""
+당신은 입력 문장에서 핵심 키워드를 추출하는 역할입니다.
+
+다음 문장이 주어집니다:
+"{sentence}"
+
+---
+
+📌 키워드 추출 규칙:
+
+1. 문장이 충분히 의미를 가진 경우:
+   - 문장에서 핵심 키워드만 추출하세요.
+   - 조사, 감탄사, 불필요한 접속사는 제거하세요.
+   - 의미 있는 단어: 명사, 고유명사, 핵심 동사 등
+
+2. 문장이 다음 조건 중 하나라도 해당된다면 **의미 없는 문장**으로 판단합니다:
+   - 한 글자 또는 두 글자
+   - 의미 없는 조합 (예: "ㅋㅋ", "하", "d", "ㅎㅇ", "123", "..." 등)
+   - 구조가 없는 단어 (주어/동사 없음)
+   → 이 경우, 아래 정보를 참고하여 GPT가 **직접 키워드를 생성**해야 합니다:
+     - 성격 (personality): "{personality}"
+     - 키워드 유형 (type): "{type}"
+
+---
+
+🎯 출력 형식 (반드시 JSON 객체로만 응답):
+
+예시 1: 문장이 충분히 의미 있을 때
+{{
+  "keywords": ["인공지능", "기술", "자율주행"],
+  "recommend": false
+}}
+
+예시 2: 문장이 무의미할 때 GPT가 생성한 경우
+{{
+  "keywords": ["책임감", "성실함", "끈기"],
+  "recommend": true
+}}
+
+❗주의사항:
+- 반드시 "recommend" 필드를 포함하세요 (true or false)
+- JSON 외 텍스트를 절대 포함하지 마세요
+"""
+
