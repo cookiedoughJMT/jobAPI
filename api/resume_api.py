@@ -8,7 +8,7 @@ import re
 import os
 from fastapi import APIRouter
 
-from prompt.resume_prompt import generate_json_kts_prompt, generate_json_keywordextractor_prompt
+from prompt.resume_prompt import generate_json_q4sg_prompt, generate_json_q3sg_prompt, generate_json_kts_prompt
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI"))
@@ -18,6 +18,7 @@ resume_api = APIRouter()
 class KTSRequest(BaseModel):
     keyword: Optional[str] = None
     personality : Optional[str] = None
+    type : Optional[str] = None
 # end class
 
 class KewordextractorRequest(BaseModel):
@@ -26,17 +27,31 @@ class KewordextractorRequest(BaseModel):
     type: Optional[str] = None
 # end class
 
-# ========================================================================== keywordExtractor API ==========================================================================================
+class Q3SG(BaseModel):
+    content : Optional[str] = None
+    major : Optional[str] = None
+    degree : Optional[str] = None
+# end class
 
-@resume_api.post("/keywordextractor")
-async def keywordextractor(request: KewordextractorRequest):
-    prompt = generate_json_keywordextractor_prompt(request.sentence, request.personality, request.type)
+class Q4SG(BaseModel):
+    content : Optional[str] = None
+    position : Optional[str] = None
+    company : Optional[str] = None
+    workperiod : Optional[str] = None
+    job : Optional[str] = None
+# end class
+
+# ========================================================================== Q3 sentence Generator API ==========================================================================================
+
+@resume_api.post("/Q3SG")
+async def q3sentencegenerator(request: Q3SG):
+    prompt = generate_json_q3sg_prompt(request.content, request.major, request.degree)
 
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-nano",
             messages=[
-                {"role": "system", "content": "다음 문장에서 핵심 의미를 간파할 수 있는 **중요 단어(키워드)**만 선별하세요."},
+                {"role": "system", "content": "너는 사용자가 입력해준 정보를 토대로 자기소개서를 전문적으로 써주는 AI야"},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=1000,
@@ -49,7 +64,7 @@ async def keywordextractor(request: KewordextractorRequest):
         json_match = re.search(r"(\[.*?\])", content, re.DOTALL)
         if json_match:
             parsed = json.loads(json_match.group())
-            return {"keywords": parsed}
+            return parsed
 
         return {"error": "JSON 형식이 감지되지 않았습니다."}
 
@@ -59,13 +74,45 @@ async def keywordextractor(request: KewordextractorRequest):
 
 # end KeywordExtractor API
 
+# ========================================================================== Q4 sentence Generator API ==========================================================================================
+
+@resume_api.post("/Q4SG")
+async def q4sentencegenerator(request: Q4SG):
+    prompt = generate_json_q4sg_prompt(request.content, request.company, request.position, request.workperiod, request.job)
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-nano",
+            messages=[
+                {"role": "system", "content": "너는 사용자가 입력해준 정보를 토대로 자기소개서를 전문적으로 써주는 AI야"},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.8
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        # [] 형태의 JSON 배열을 파싱
+        json_match = re.search(r"(\[.*?\])", content, re.DOTALL)
+        if json_match:
+            parsed = json.loads(json_match.group())
+            return parsed
+
+        return {"error": "JSON 형식이 감지되지 않았습니다."}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# end KeywordExtractor API
 
 # ========================================================================== KTS API ==========================================================================================
 
 @resume_api.post("/KTS")
 async def generate_general_interview(request:KTSRequest):
 
-    prompt = generate_json_kts_prompt(request.keyword, request.personality)
+    prompt = generate_json_kts_prompt(request.keyword, request.personality, request.type)
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-nano",
