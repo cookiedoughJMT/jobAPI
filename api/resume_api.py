@@ -8,7 +8,7 @@ import re
 import os
 from fastapi import APIRouter
 
-from prompt.resume_prompt import generate_json_q4sg_prompt, generate_json_q3sg_prompt, generate_json_kts_prompt
+from prompt.resume_prompt import generate_json_q4sg_prompt, generate_json_q3sg_prompt, generate_json_kts_prompt, generate_json_q6sg_prompt
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI"))
@@ -40,6 +40,12 @@ class Q4SG(BaseModel):
     workperiod : Optional[str] = None
     job : Optional[str] = None
 # end class
+
+class Q6SG(BaseModel):
+    content : Optional[str] = None
+    achievements : list[str] | None
+# end class
+
 
 # ========================================================================== Q3 sentence Generator API ==========================================================================================
 
@@ -79,6 +85,39 @@ async def q3sentencegenerator(request: Q3SG):
 @resume_api.post("/Q4SG")
 async def q4sentencegenerator(request: Q4SG):
     prompt = generate_json_q4sg_prompt(request.content, request.company, request.position, request.workperiod, request.job)
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-nano",
+            messages=[
+                {"role": "system", "content": "너는 사용자가 입력해준 정보를 토대로 자기소개서를 전문적으로 써주는 AI야"},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=1000,
+            temperature=0.8
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        # [] 형태의 JSON 배열을 파싱
+        json_match = re.search(r"(\[.*?\])", content, re.DOTALL)
+        if json_match:
+            parsed = json.loads(json_match.group())
+            return parsed
+
+        return {"error": "JSON 형식이 감지되지 않았습니다."}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
+# end KeywordExtractor API
+
+# ========================================================================== Q6 sentence Generator API ==========================================================================================
+
+@resume_api.post("/Q6SG")
+async def q6sentencegenerator(request: Q6SG):
+    prompt = generate_json_q6sg_prompt(request.content, request.achievements)
 
     try:
         response = client.chat.completions.create(
