@@ -165,3 +165,60 @@ def generate_json_q7sg_prompt(text):
         return prompt
 
 # end def
+
+# ================================== create resume  ========================
+
+def generate_json_createresume_prompt(personalities, degree, major, whenLearn, company, workPeriod, position, job, whenWork, achievements, whenDoing, forCompany):
+
+    education_block = ""
+    if any([company, position, workPeriod, job, whenWork]):
+        education_block = f"또한, 지원자의 회사 경험(회사: `{company or ''}`, 직급: `{position or ''}`, 근무 기간: `{workPeriod or ''}`, 직무: `{job or ''}`, 느낀 점: `{whenWork or ''}`)을 포함해 연결하세요."
+
+    career_block = "반드시 null로 응답"
+    if achievements:
+        if any([achievements, whenDoing]):
+            career_block = f"사용자의 **자격증 및 수상경력**({achievements})과 해당 경험의 노력 서사({whenDoing})를 기반으로, **실력과 태도, 성장 의지**를 강조하는 문단을 작성하세요."
+        else:
+            career_block = f"사용자의 **자격증 및 수상경력**({achievements})를(을) 기반으로, **실력과 태도, 성장 의지**를 강조하는 문단을 작성하세요."
+
+    prompt = f"""
+            당신은 지원자의 입력값을 바탕으로, 4개의 자기소개서 문단을 구성해야 합니다. 각각의 문단은 아래와 같은 목적을 갖습니다:
+            
+            1️⃣ personality: 지원자의 **성격적 장점 3개, 단점 2개**를 바탕으로 형성된 **성장 과정과 인성**을 서술합니다. 각 성격 항목의 `answer` 필드를 활용해, 자연스럽게 이어지는 하나의 서사 문단으로 구성하세요.
+            
+            2️⃣ education: 사용자의 **학력 정보({degree}, {major})와 학업 중 경험**을 바탕으로, **지원 직무에 얼마나 적합한지**를 강조하세요. {education_block}
+            
+            3️⃣ career: {career_block}
+            
+            4️⃣ attitude: 사용자가 입력한 **회사에 대한 포부**({forCompany})를 바탕으로, 입사 후 어떤 태도와 자세로 근무할지를 다룬 문단을 작성하세요.
+            
+            📌 작성 규칙:
+            - 각 항목은 `personality`, `education`, `career`, `attitude` 키를 가진 JSON 형식으로 구성하세요.
+            - 각 문단은 반드시 모두 10문장 이상의 자연스러운 자기소개 문단으로 작성되어야 합니다.
+            - **모든 문장은 '저는'으로 시작**하고, **존댓말**로 마무리되어야 합니다.
+            - 중복된 문장 없이, 자연스럽게 연결된 흐름을 가진 서사형 문단을 작성하세요.
+            - 최종 출력은 key가 포함된 JSON 객체로 반환하며, 예시는 아래와 같습니다:
+            
+            다음은 사용자가 입력한 실제 데이터입니다:
+            - 성격 요약: {[p["text"] for p in personalities]}
+            - 성장 서사: {[p["answer"] for p in personalities]}
+            - 학력 요약: {degree}, {major}
+            - 학업 중 경험: {whenLearn}
+            - 경력 요약: 다니던 회사: {company}, 직급/직책: {position}, 직무: {job}, 근무 중 느낀점: {whenWork}
+            - 자격증/수상: {achievements}
+            - 자격증 준비 경험: {whenDoing}
+            - 회사 포부: {forCompany}
+            
+            반드시 아래 형식으로 출력하세요:
+            {{
+              "personality": "...",
+              "education": "...",
+              "career": "...",
+              "attitude": "..."
+            }}
+            """
+    print(prompt)
+
+    return prompt
+
+# end def

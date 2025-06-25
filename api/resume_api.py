@@ -8,7 +8,7 @@ import re
 import os
 from fastapi import APIRouter
 
-from prompt.resume_prompt import generate_json_q4sg_prompt, generate_json_q3sg_prompt, generate_json_kts_prompt, generate_json_q6sg_prompt, generate_json_q7sg_prompt
+from prompt.resume_prompt import generate_json_q4sg_prompt, generate_json_q3sg_prompt, generate_json_kts_prompt, generate_json_q6sg_prompt, generate_json_q7sg_prompt, generate_json_createresume_prompt
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI"))
@@ -48,6 +48,21 @@ class Q6SG(BaseModel):
 
 class Q7SG(BaseModel):
     content : Optional[str] = None
+# end class
+
+class Createresume(BaseModel):
+    personalities : list[object] = None
+    degree: Optional[str] = None
+    major: Optional[str] = None
+    whenLearn: Optional[str] = None
+    company: Optional[str] = None
+    workPeriod: Optional[str] = None
+    position: Optional[str] = None
+    job: Optional[str] = None
+    whenWork: Optional[str] = None
+    achievements: list[str] = None
+    whenDoing: Optional[str] = None
+    forCompany: Optional[str] = None
 # end class
 
 # ========================================================================== Q3 sentence Generator API ==========================================================================================
@@ -172,6 +187,42 @@ async def q7sentencegenerator(request: Q7SG):
             return parsed
 
         return {"error": "JSON 형식이 감지되지 않았습니다."}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+# ========================================================================== Final Resume Create API ==========================================================================================
+
+@resume_api.post("/createresume")
+async def createresume(request: Createresume):
+    prompt = generate_json_createresume_prompt(request.personalities, request.degree, request.major, request.whenLearn, request.company, request.workPeriod, request.position, request.job, request.whenWork, request.achievements, request.whenDoing, request.forCompany)
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-nano",
+            messages=[
+                {"role": "system", "content": "너는 사용자가 입력해준 정보를 토대로 자기소개서를 전문적으로 써주는 AI야"},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=10000,
+            temperature=0.8
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        # ✅ 마크다운 제거
+        content = content.replace("```json", "").replace("```", "").strip()
+
+        print(content)
+
+        # ✅ 중괄호 블록만 추출
+        json_match = re.search(r"\{.*\}", content, re.DOTALL)
+
+        if json_match:
+            parsed = json.loads(json_match.group())
+            return parsed
+
+        return {"error": "JSON 객체 형식이 감지되지 않았습니다."}
 
     except Exception as e:
         return {"error": str(e)}
