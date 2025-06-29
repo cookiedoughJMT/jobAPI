@@ -1,32 +1,45 @@
 
-# ================================== KTS ========================
+# ================================== Q2 sentence Generator ========================
 
-def generate_json_kts_prompt(
-        keyword, personality, type
+def generate_json_q2sg_prompt(
+        content, personality
 ):
-    prompt = f"""
-    다음은 사용자로부터 입력된 정보입니다:
-    - 성격: "{personality}"
-    - 키워드: "{keyword}"
-    - 타입: "{type}
 
-    요구사항:
-    1. 아래 형식에 맞춰 **총 3개의 서로 다른 문장**을 만들어주세요.
-    2. 각 문장은 약 3~4문장 정도 분량의 짧은 에세이처럼 구성해주세요.
-    3. 성격은 문장의 중심 성격으로 녹여내고, 키워드는 해당 경험이나 행동으로 자연스럽게 반영해주세요.
-    4. 문장을 모두 면접관에게 말하듯 '저는'으로 시작되는 존댓말 어조로 써주세요.
-    5."타입"이 "장점"일 경우: 키워드에서 해당 성격이 자라난 과정을 중심으로 설명해 주세요. "타입"이 "단점"일 경우: 키워드에서 비롯된 단점 상황과 그것을 극복하려는 과정을 중심으로 작성해 주세요.
-    6. 전체를 **JSON 형식**으로 반환해주세요. `"sentences"` 배열로 만들어주세요.
+    strengths = [p["text"] for p in personality if p["type"] == "장점"]
+    weaknesses = [p["text"] for p in personality if p["type"] == "단점"]
+
+    # personality 기반 설명
+    strength_desc = ""
+    if strengths:
+        strength_desc = f"저의 주요 강점은 {', '.join(strengths)} 입니다. "
+        strength_desc += "이러한 성격은 성장 과정에서 자연스럽게 형성되었고, 여러 경험 속에서 더욱 두드러졌습니다."
+
+    weakness_desc = ""
+    if weaknesses:
+        weakness_desc = f"또한, {', '.join(weaknesses)}과 같은 단점도 있었지만 이를 극복하기 위해 지속적으로 노력하며 성장했습니다."
+
+
+    prompt = f"""
+    당신은 사용자가 입력한 성장 배경과 성격을 바탕으로 약 3~4문장 분량의 짧은 에세이를 작성하는 전문가입니다.
     
+    아래 내용을 참고하여, 
+    - 성장 배경 속에서 장점(type="장점") 성격을 자연스럽게 드러내며,
+    - 단점(type="단점") 성격이 있을 경우 이를 극복하기 위해 노력한 모습을 보여주세요.
+    총 3개의 서로 다른 에세이를 만들어야 합니다.
     
-    응답 예시 (JSON only):
-    {{
-        "sentences": [
-            "첫 번째 성장 배경 문장입니다...",
-            "두 번째 성장 배경 문장입니다...",
-            "세 번째 성장 배경 문장입니다..."
-        ]
-    }}
+    모든 문장은 존댓말로 작성하세요.
+    반드시 JSON 배열 형식으로 아래처럼 출력하세요:
+    [
+      "첫 번째 에세이 (약 3~4문장)",
+      "두 번째 에세이 (약 3~4문장)",
+      "세 번째 에세이 (약 3~4문장)"
+    ]
+    
+    ### 사용자 입력 성장 배경
+    {content}
+    
+    ### 성격
+    {strength_desc}{(" " + weakness_desc) if weakness_desc else ""}
     """
 
     print(prompt)
@@ -34,9 +47,9 @@ def generate_json_kts_prompt(
     return prompt
 # end def
 
-# ================================== Q3 sentence Generator ========================
+# ================================== Q4 sentence Generator ========================
 
-def generate_json_q3sg_prompt(text, major, degree):
+def generate_json_q4sg_prompt(text, degree, major):
     prompt = f"""
             다음은 사용자가 입력한 학력과 학업 중 경험에 대한 간략한 설명입니다. 이를 바탕으로, 문학적인 표현을 활용해 자기소개서에서 사용할 수 있는 문장 3개를 작성하세요.
             
@@ -68,7 +81,7 @@ def generate_json_q3sg_prompt(text, major, degree):
 
 # ================================== Q4 sentence Generator ========================
 
-def generate_json_q4sg_prompt(text, company, position, workperiod, job):
+def generate_json_qXsg_prompt(text, company, position, workperiod, job):
     prompt = f"""
         
             사용자가 아래에 입력한 근무 정보를 바탕으로, 자기소개서에서 사용할 수 있는 문장 3개를 작성하세요. 문장은 회사에서의 직무 경험과 배운 점, 성과, 느낀 점 등을 중심으로 서사적으로 풀어내야 하며, 각 문장은 반드시 '저는'으로 시작하고 존댓말을 사용해야 합니다.
@@ -83,7 +96,7 @@ def generate_json_q4sg_prompt(text, company, position, workperiod, job):
             1. 총 3개의 서로 다른 자기소개 문장을 작성하세요.
             2. 각 문장은 반드시 3문장 이상으로 구성하세요.
             3. 문학적이고 서사적인 문체로 자연스럽게 작성하세요.
-            4. 모든 문장은 '저는'으로 시작하고, 존댓말 어조를 사용하세요.
+            4. 문장은 모두 면접관에게 말하듯 '저는'으로 시작되는 존댓말 어조로 써주세요.
             5. 문장 속에 입력된 회사명, 직무, 직책, 경험 요약이 자연스럽게 반영되어야 합니다.
             6. 아래 출력 예시처럼 JSON 배열 형식으로만 반환하세요. key 없이 배열([])만 출력해야 합니다.
             
@@ -117,7 +130,7 @@ def generate_json_q6sg_prompt(text, achievements):
     1. 총 3개의 **서로 다른 자기소개 문장**을 작성하세요.
     2. 각 문장은 반드시 3문장 이상으로 구성하세요.
     3. 문학적이고 서사적인 문체로 자연스럽게 작성하세요.
-    4. 모든 문장은 '저는'으로 시작하고, 존댓말 어조를 사용하세요.
+    4. 문장은 모두 면접관에게 말하듯 '저는'으로 시작되는 존댓말 어조로 써주세요.
     5. 자격증 또는 수상 경력은 문장 속에 자연스럽게 녹여내되, 강조 포인트로 활용하세요.
     6. 아래 출력 예시처럼 **JSON 배열 형식으로만** 반환하세요. key 없이 배열([])만 출력해야 합니다.
 
@@ -145,7 +158,7 @@ def generate_json_q7sg_prompt(text):
         📌 작성 조건:
         1. 총 3개의 **서로 다른 스타일의 자기소개 문장**을 작성하세요.
         2. 각 문장은 **3문장 이상**으로 구성하되, 자연스러운 흐름을 가진 **서사형 문체**로 작성하세요.
-        3. 모든 문장은 반드시 '저는'으로 시작하고, **존댓말 어조**를 유지하세요.
+        3. 문장은 모두 면접관에게 말하듯 '저는'으로 시작되는 존댓말 어조로 써주세요.
         4. 입력된 내용을 그대로 반복하지 말고, 핵심 의도를 살려 다듬고 확장해서 작성하세요.
         5. 회사에 대한 진심 어린 포부, 구체적인 실행 계획, 배경 동기를 서술 속에 녹여내세요.
         6. 아래 출력 예시처럼 **JSON 배열 형식으로만** 출력하세요. key 없이 배열([])만 반환해야 합니다.
@@ -168,46 +181,46 @@ def generate_json_q7sg_prompt(text):
 
 # ================================== create resume  ========================
 
-def generate_json_createresume_prompt(personalities, degree, major, whenLearn, company, workPeriod, position, job, whenWork, achievements, whenDoing, forCompany):
+def generate_json_createresume_prompt(
+    personalities, growStory, degree, major, whenLearn,
+    company, workPeriod, position, job, achievements, forCompany
+):
+    # --- 동적으로 문장 생성 ---
+    grow_story_line = f"- 성장 배경: {growStory}\n" if growStory else ""
+    when_learn_line = f"- 학업 중 경험: {whenLearn}\n" if whenLearn else ""
+    work_period_line = f"- 근무 기간: {workPeriod}\n" if workPeriod else ""
+    achievements_line = f"- 자격증/수상: {achievements}\n" if achievements else ""
+    for_company_line = f"- 회사 포부: {forCompany}\n" if forCompany else ""
 
-    education_block = ""
-    if any([company, position, workPeriod, job, whenWork]):
-        education_block = f"또한, 지원자의 회사 경험(회사: `{company or ''}`, 직급: `{position or ''}`, 근무 기간: `{workPeriod or ''}`, 직무: `{job or ''}`, 느낀 점: `{whenWork or ''}`)을 포함해 연결하세요."
+    # --- 성격 ---
+    personalities_summary = [p["text"] for p in personalities]
 
-    career_block = "반드시 null로 응답"
-    if achievements:
-        if any([achievements, whenDoing]):
-            career_block = f"사용자의 **자격증 및 수상경력**({achievements})과 해당 경험의 노력 서사({whenDoing})를 기반으로, **실력과 태도, 성장 의지**를 강조하는 문단을 작성하세요."
-        else:
-            career_block = f"사용자의 **자격증 및 수상경력**({achievements})를(을) 기반으로, **실력과 태도, 성장 의지**를 강조하는 문단을 작성하세요."
-
+    # --- Prompt ---
     prompt = f"""
             당신은 지원자의 입력값을 바탕으로, 4개의 자기소개서 문단을 구성해야 합니다. 각각의 문단은 아래와 같은 목적을 갖습니다:
             
-            1️⃣ personality: 지원자의 **성격적 장점 3개, 단점 2개**를 바탕으로 형성된 **성장 과정과 인성**을 서술합니다. 각 성격 항목의 `answer` 필드를 활용해, 자연스럽게 이어지는 하나의 서사 문단으로 구성하세요.
+            1️⃣ personality: 지원자의 **성격적 장점 3개, 단점 2개**를 바탕으로 형성된 **성장 과정과 인성**을 서술합니다. 각 성격 항목의 `answer` 필드를 활용해, 자연스럽게 이어지는 하나의 서사 문단으로 구성하세요.{" 성장 배경도 반영해 주세요." if growStory else ""}
             
-            2️⃣ education: 사용자의 **학력 정보({degree}, {major})와 학업 중 경험**을 바탕으로, **지원 직무에 얼마나 적합한지**를 강조하세요. {education_block}
+            2️⃣ education: 사용자의 **학력 정보({degree}, {major})와 학업 중 경험**을 바탕으로, **지원 직무에 얼마나 적합한지**를 강조하세요.
             
-            3️⃣ career: {career_block}
+            3️⃣ career: 사용자의 **근무 이력(회사명: {company}, 근무 기간: {workPeriod}, 직급/직책: {position}, 직무: {job})**을 기반으로, 직무 전문성을 어필하세요.
             
             4️⃣ attitude: 사용자가 입력한 **회사에 대한 포부**({forCompany})를 바탕으로, 입사 후 어떤 태도와 자세로 근무할지를 다룬 문단을 작성하세요.
             
             📌 작성 규칙:
             - 각 항목은 `personality`, `education`, `career`, `attitude` 키를 가진 JSON 형식으로 구성하세요.
             - 각 문단은 반드시 모두 10문장 이상의 자연스러운 자기소개 문단으로 작성되어야 합니다.
-            - **모든 문장은 '저는'으로 시작**하고, **존댓말**로 마무리되어야 합니다.
+            - 문장은 모두 면접관에게 말하듯 '저는'으로 시작되는 존댓말 어조로 써주세요.
             - 중복된 문장 없이, 자연스럽게 연결된 흐름을 가진 서사형 문단을 작성하세요.
             - 최종 출력은 key가 포함된 JSON 객체로 반환하며, 예시는 아래와 같습니다:
             
             다음은 사용자가 입력한 실제 데이터입니다:
-            - 성격 요약: {[p["text"] for p in personalities]}
-            - 성장 서사: {[p["answer"] for p in personalities]}
-            - 학력 요약: {degree}, {major}
-            - 학업 중 경험: {whenLearn}
-            - 경력 요약: 다니던 회사: {company}, 직급/직책: {position}, 직무: {job}, 근무 중 느낀점: {whenWork}
-            - 자격증/수상: {achievements}
-            - 자격증 준비 경험: {whenDoing}
-            - 회사 포부: {forCompany}
+            - 성격 요약: {personalities_summary}
+            {grow_story_line}{when_learn_line}
+            - 학력: {degree}, {major}
+            {work_period_line}
+            - 회사: {company}, 직급/직책: {position}, 직무: {job}
+            {achievements_line}{for_company_line}
             
             반드시 아래 형식으로 출력하세요:
             {{
@@ -217,8 +230,6 @@ def generate_json_createresume_prompt(personalities, degree, major, whenLearn, c
               "attitude": "..."
             }}
             """
+
     print(prompt)
-
     return prompt
-
-# end def
