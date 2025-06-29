@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.interview_api import interview_api
 from api.resume_api import resume_api
 from api.essay_analysis_api import essay_analysis_api
+from api.audio_analysis_api import audio_api
 
 app = FastAPI(
     title="JobAyong API",
@@ -23,7 +24,7 @@ app.add_middleware(
 app.include_router(interview_api, prefix="/api/interview", tags=["면접"])
 app.include_router(resume_api, prefix="/api/resume", tags=["이력서"])
 app.include_router(essay_analysis_api, prefix="/api/essay", tags=["자소서"])
-# app.include_router(voice.router, prefix="/api/voice", tags=["음성"])
+app.include_router(audio_api, prefix="/api/audio", tags=["음성"])
 
 @app.get("/")
 async def root():
