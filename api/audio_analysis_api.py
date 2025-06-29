@@ -104,12 +104,14 @@ async def analyze_audio(file: UploadFile = File(...)):
         features = {k: float(np.mean(v)) for k, v in zip(f_names, F)}
         feat_txt = "\n".join(f"- {k}: {v:.4f}" for k, v in features.items())
 
+        print('transcript: ', transcript)
         # 3) GPT 프롬프트 -------------------------------------------------------
         prompt = f"""
         다음은 한 사용자의 음성 면접 데이터입니다. 텍스트와 음성 피처를 참고해 아래 JSON 스키마에 **딱 맞춰서** (백틱·주석 없이) 응답하세요.
         speedPattern 의 data값은 최대한 여러개를 뽑아주시고 position 의 값은 최소 10씩 차이나게 해주세요.
-        strengths, improvements, improvementStrategies 이 항목은 description에 담아야할 내용의 주제를 설명했습니다.
-        참고하여 자세히 작성해주세요.
+        strengths, improvements, improvementStrategies 이 항목은 description에 담아야할 내용의 주제를 설명했습니다 참고하여 최대한 많이 작성해주세요.
+        텍스트의 길이가 너무 짧거나, 내용이 없거나, 의미 파악이 어려운 경우 또는 성의가 부족하다고 판단되는 경우에는 confidence와 overallScore 점수를 최대한 낮게 책정해주세요.
+        
         
         🗣 텍스트
         \"\"\"{transcript}\"\"\"
