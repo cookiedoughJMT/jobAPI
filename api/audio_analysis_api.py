@@ -110,7 +110,9 @@ async def analyze_audio(file: UploadFile = File(...)):
         다음은 한 사용자의 음성 면접 데이터입니다. 텍스트와 음성 피처를 참고해 아래 JSON 스키마에 **딱 맞춰서** (백틱·주석 없이) 응답하세요.
         speedPattern 의 data값은 최대한 여러개를 뽑아주시고 position 의 값은 최소 10씩 차이나게 해주세요.
         strengths, improvements, improvementStrategies 이 항목은 description에 담아야할 내용의 주제를 설명했습니다 참고하여 최대한 많이 작성해주세요.
-        텍스트의 길이가 너무 짧거나, 내용이 없거나, 의미 파악이 어려운 경우 또는 성의가 부족하다고 판단되는 경우에는 confidence와 overallScore 점수를 최대한 낮게 책정해주세요.
+        improvements, improvementStrategies 이 항목은 텍스트의 전체 논리성, 구조성, 표현성, 전문성, 매력 등 또는 음성 피처를 통한 평가로 다양하게 평가한뒤 각각 개선점, 개선방향을 작성해주세요.
+        텍스트의 길이가 너무 짧거나, 내용이 없거나, 성의가 부족하다고 판단되는 경우에는 confidence와 overallScore 점수를 최대한 낮게 책정해주세요.
+        그러나 텍스트의 의미 파악만 어려운 경우엔 최대한 고쳐서 전체 문맥을 이해하고 너그럽게 평가해주세요.
         
         
         🗣 텍스트
