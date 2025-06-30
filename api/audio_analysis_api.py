@@ -108,26 +108,29 @@ async def analyze_audio(file: UploadFile = File(...)):
         # 3) GPT 프롬프트 -------------------------------------------------------
         prompt = f"""
         다음은 한 사용자의 음성 면접 데이터입니다. 텍스트와 음성 피처를 참고해 아래 JSON 스키마에 **딱 맞춰서** (백틱·주석 없이) 응답하세요.
-        speedPattern 의 data값은 최대한 여러개를 뽑아주시고 position 의 값은 최소 10씩 차이나게 해주세요.
-        strengths, improvements, improvementStrategies 이 항목은 description에 담아야할 내용의 주제를 설명했습니다 참고하여 최대한 많이 작성해주세요.
-        improvements, improvementStrategies 이 항목은 텍스트의 전체 논리성, 구조성, 표현성, 전문성, 매력 등 또는 음성 피처를 통한 평가로 다양하게 평가한뒤 각각 개선점, 개선방향을 작성해주세요.
-        텍스트의 길이가 너무 짧거나, 내용이 없거나, 성의가 부족하다고 판단되는 경우에는 confidence와 overallScore 점수를 최대한 낮게 책정해주세요.
-        그러나 텍스트의 의미 파악만 어려운 경우엔 최대한 고쳐서 전체 문맥을 이해하고 너그럽게 평가해주세요.
-        
-        
+
+        ❗️핵심 의무 사항
+        1. **strengths / improvements / improvementStrategies** 에 최소 8개씩, 가능하면 10개 이상 작성.
+        2. 항목 내 제목(title)은 서로 겹치지 않도록 **서로 다른 관점**(예: 논리, 전문성, 자신감, 어조, 속도, 비언어적 표현, 태도, 공감력, 시간 관리 등)으로 다양화.
+        3. description 문장은 구체적 사례(“서두에서 정의를 정확히 밝혔다” / “마지막 3초간 음이 불안정했다”)가 포함되도록 작성.
+        4. improvements 와 improvementStrategies 는 반드시 서로 1:1 대응되도록 **같은 순서**로 나열.
+
+        텍스트가 지나치게 짧거나 내용·성의가 부족하면 confidence 및 overallScore 를 **10~30** 영역으로 낮게 책정하세요.  
+        다만 문맥만 난해할 경우엔 의미를 보정·추론하여 최대한 너그럽게 평가합니다.
+
         🗣 텍스트
         \"\"\"{transcript}\"\"\"
-        
+
         🎧 음성 피처 요약
         {feat_txt}
-        
+
         {{
           "overallScore":  (10~100 정수),
           "clarity":       (0~100 정수),
           "speed":         (0~100 정수),
           "volume":        (0~100 정수),
           "confidence":    (overallScore 동일),
-        
+
           "speechMetrics": {{
             "wordsPerMinute": 0,
             "clarity":        0,
@@ -136,7 +139,7 @@ async def analyze_audio(file: UploadFile = File(...)):
             "pronunciation":  0,
             "fillers":        0
           }},
-        
+
           "voicePatterns": {{
             "volumePattern": {{
               "description": "문장",
@@ -144,28 +147,28 @@ async def analyze_audio(file: UploadFile = File(...)):
             }},
             "speedPattern": {{
               "description": "문장",
-              "data": [{{"position":0,"level":0}},...]
+              "data": [{{"position":0,"level":0}},{{"position":10,"level":1}},...]
             }},
             "tonePattern": {{
               "description": "문장"
             }}
           }},
-        
-         "strengths": [
-            {{ "title": "짧은 제목(강점)", "description": "전체 강점을 설명해주세요" }},
-            {{ "title": "짧은 제목(강점)", "description": "디테일한 강점을 설명해주세요" }}, ...
+
+          "strengths": [
+            {{ "title": "짧은 제목(강점)", "description": "구체 사례를 포함한 강점 설명" }}, ...
           ],
           "improvements": [
-            {{ "title": "짧은 제목(개선점)", "description": "전체 개선점을 설명해주세요" }},
-            {{ "title": "짧은 제목(개선점)", "description": " 디테일한 개선점을 설명해주세요" }}, ...
+            {{ "title": "짧은 제목(개선점)", "description": "구체 사례를 포함한 개선 설명" }}, ...
           ],
           "improvementStrategies": [
-            {{ "title": "짧은 제목(개선 전략)", "description": "한 문장 설명" }}, ...
+            {{ "title": "짧은 제목(개선 전략)", "description": "개선점과 1:1 대응되는 실행 가능한 전략" }}, ...
           ]
         }}
-        
-        지침
-        - 위 JSON 키·구조 변형 금지, 숫자는 정수 또는 소수 1자리.
+
+        추가 작성 가이드
+        - JSON 키·구조 변형 금지, 숫자는 정수 또는 소수 1자리.
+        - 음성 분석(면접 상황)에 맞춰 음향·언어·비언어·논리·태도 등 **다각도**로 평가.
+        - 동일 범주라도 다른 세부 요소(예: '어투-친근감' vs '어투-전문성')로 분화.
         """
 
         gpt_resp = client.chat.completions.create(
