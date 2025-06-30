@@ -67,6 +67,35 @@ def clean_md_json(text: str) -> str:
     """ ```json ... ```  감싸기 제거 """
     return re.sub(r"^```json\s*|\s*```$", "", text.strip(), flags=re.DOTALL)
 
+def compute_wpm_timeline(words, segment_size=5.0):
+    timeline = []
+    current_start = 0.0
+    end_time = words[-1]["end"] if words else 0
+
+    print(words)
+
+    while current_start < end_time:
+        current_end = current_start + segment_size
+        count = sum(1 for w in words if current_start <= w["start"] < current_end)
+        wpm = int(count / segment_size * 60)
+        timeline.append({"time": round(current_start), "wpm": wpm})
+        current_start += segment_size
+
+    return timeline
+
+def convert_wpm_timeline_to_speed_pattern(wpm_timeline):
+    if not wpm_timeline:
+        return []
+
+    end_time = wpm_timeline[-1]["time"] + 5.0  # 마지막 구간 포함
+
+    pattern = []
+    for item in wpm_timeline:
+        position = int((item["time"] / end_time) * 100)  # 0~100%
+        level = item["wpm"]  # 정규화 없이 실제 wpm 값 그대로
+        pattern.append({ "position": position, "level": level })
+
+    return pattern
 
 # ────────────────── 메인 엔드포인트 ──────────────────
 @audio_api.post("/analyze")
@@ -81,6 +110,12 @@ async def analyze_audio(file: UploadFile = File(...)):
 
         # 1) Whisper -----------------------------------------------------------
         transcript = whisper_model.transcribe("uploaded.wav")["text"]
+        whisper_result = whisper_model.transcribe("uploaded.wav", word_timestamps=True, language='ko')
+
+        # 단어 단위 시간 정보 추출
+        words = []
+        for seg in whisper_result.get("segments", []):
+            words.extend(seg.get("words", []))
 
         # 2) pyAudioAnalysis ---------------------------------------------------
         Fs, x = audioBasicIO.read_audio_file("uploaded.wav")
@@ -105,6 +140,10 @@ async def analyze_audio(file: UploadFile = File(...)):
         feat_txt = "\n".join(f"- {k}: {v:.4f}" for k, v in features.items())
 
         print('transcript: ', transcript)
+        wpm_timeline = compute_wpm_timeline(words)
+        speed_pattern_data = convert_wpm_timeline_to_speed_pattern(wpm_timeline)
+        print('speed_pattern_data: ', speed_pattern_data)
+
         # 3) GPT 프롬프트 -------------------------------------------------------
         prompt = f"""
         다음은 한 사용자의 음성 면접 데이터입니다. 텍스트와 음성 피처를 참고해 아래 JSON 스키마에 **딱 맞춰서** (백틱·주석 없이) 응답하세요.
@@ -136,7 +175,8 @@ async def analyze_audio(file: UploadFile = File(...)):
 
         🎧 음성 피처 요약
         {feat_txt}
-
+        - 구간별 속도 변화: {json.dumps(wpm_timeline[:5])[:300]}...
+        
         {{
           "overallScore":  (10~100 정수),
           "clarity":       (0~100 정수),
@@ -223,6 +263,14 @@ async def analyze_audio(file: UploadFile = File(...)):
             parsed["voicePatterns"]["tonePattern"] = {
                 "description": "응답 내 tonePattern 누락됨, 직접 추가됨",
                 "data": tone_pattern
+            }
+
+        if "voicePatterns" in parsed and "speedPattern" in parsed["voicePatterns"]:
+            parsed["voicePatterns"]["speedPattern"]["data"] = speed_pattern_data
+        else:
+            parsed["voicePatterns"]["speedPattern"] = {
+                "description": "시간 흐름에 따른 말하기 속도 변화",
+                "data": speed_pattern_data
             }
 
         # 6) 최종 반환 ----------------------------------------------------------
