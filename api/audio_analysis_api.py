@@ -110,18 +110,17 @@ async def analyze_audio(file: UploadFile = File(...)):
         다음은 한 사용자의 음성 면접 데이터입니다. 텍스트와 음성 피처를 참고해 아래 JSON 스키마에 **딱 맞춰서** (백틱·주석 없이) 응답하세요.
 
         ❗️핵심 의무 사항
-        1. strengths / improvements / improvementStrategies 에 최소 8개씩, 가능하면 10개 이상 작성.
+        1. strengths / improvements / improvementStrategies 항목에 최소 8개씩, 가능하면 10개 이상 작성.
         2. 제목(title)은 서로 다른 관점(논리·전문성·자신감·어조·속도·말투·공감력·시간 관리 등)으로 다양화.
         3. description 에는 구체적 사례를 포함.
         4. improvements 와 improvementStrategies 는 1:1로 대응(같은 순서).
 
         텍스트가 너무 짧거나 성의가 부족하면 confidence, overallScore 를 10~30 영역으로 낮춰 주세요.
-        
-        평가 불가 처리:
-        - 의미 있는 단어 수 < 10 또는 fillers 비율 ≥ 70%면
-          strengths / improvements / improvementStrategies 는 빈 배열 [] 로 반환하고,
-          interviewerComment 에 “평가 불가(유효 발화 부족)” 를 적어주세요.
-        
+                
+        strengths 항목은 최소 8개 이상 해주세요.
+        improvements 항목은 최소 8개 이상 해주세요.
+        improvementStrategies 항목은 최소 8개 이상 해주세요.                
+                
         중복 금지:
         - strengths.title 과 improvements.title 은 절대 중복되지 않도록 작성하세요.
           (중복이 생길 경우, improvements 쪽 항목을 제거)
