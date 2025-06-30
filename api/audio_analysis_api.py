@@ -110,13 +110,27 @@ async def analyze_audio(file: UploadFile = File(...)):
         다음은 한 사용자의 음성 면접 데이터입니다. 텍스트와 음성 피처를 참고해 아래 JSON 스키마에 **딱 맞춰서** (백틱·주석 없이) 응답하세요.
 
         ❗️핵심 의무 사항
-        1. **strengths / improvements / improvementStrategies** 에 최소 8개씩, 가능하면 10개 이상 작성.
-        2. 항목 내 제목(title)은 서로 겹치지 않도록 **서로 다른 관점**(예: 논리, 전문성, 자신감, 어조, 속도, 비언어적 표현, 태도, 공감력, 시간 관리 등)으로 다양화.
-        3. description 문장은 구체적 사례(“서두에서 정의를 정확히 밝혔다” / “마지막 3초간 음이 불안정했다”)가 포함되도록 작성.
-        4. improvements 와 improvementStrategies 는 반드시 서로 1:1 대응되도록 **같은 순서**로 나열.
+        1. strengths / improvements / improvementStrategies 에 최소 8개씩, 가능하면 10개 이상 작성.
+        2. 제목(title)은 서로 다른 관점(논리·전문성·자신감·어조·속도·말투·공감력·시간 관리 등)으로 다양화.
+        3. description 에는 구체적 사례를 포함.
+        4. improvements 와 improvementStrategies 는 1:1로 대응(같은 순서).
 
-        텍스트가 지나치게 짧거나 내용·성의가 부족하면 confidence 및 overallScore 를 **10~30** 영역으로 낮게 책정하세요.  
-        다만 문맥만 난해할 경우엔 의미를 보정·추론하여 최대한 너그럽게 평가합니다.
+        텍스트가 너무 짧거나 성의가 부족하면 confidence, overallScore 를 10~30 영역으로 낮춰 주세요.
+        
+        평가 불가 처리:
+        - 의미 있는 단어 수 < 10 또는 fillers 비율 ≥ 70%면
+          strengths / improvements / improvementStrategies 는 빈 배열 [] 로 반환하고,
+          interviewerComment 에 “평가 불가(유효 발화 부족)” 를 적어주세요.
+        
+        중복 금지:
+        - strengths.title 과 improvements.title 은 절대 중복되지 않도록 작성하세요.
+          (중복이 생길 경우, improvements 쪽 항목을 제거)
+        
+        근거 필수:
+        - 모든 description 에서는 실제 음성·텍스트에서 확인 가능한 구체적 근거를 명시하세요.
+          근거 없이 추상적 칭찬(예: ‘성실함’, ‘공감성 높음’)은 금지합니다.
+          
+        문맥만 난해할 경우엔 의미를 보정·추론해 최대한 너그럽게 평가합니다.
 
         🗣 텍스트
         \"\"\"{transcript}\"\"\"
@@ -140,6 +154,15 @@ async def analyze_audio(file: UploadFile = File(...)):
             "fillers":        0
           }},
 
+          "metricGrades": {{
+            "wordsPerMinute": {{ "grade": "적절/빠름/느림", "comment": "짧은 분석" }},
+            "clarity":        {{ "grade": "우수/보통/개선 필요", "comment": "짧은 분석" }},
+            "intonation":     {{ "grade": "풍부/단조로움", "comment": "짧은 분석" }},
+            "pauseDuration":  {{ "grade": "적절/빠름/과다", "comment": "짧은 분석" }},
+            "pronunciation":  {{ "grade": "우수/개선 필요", "comment": "짧은 분석" }},
+            "fillers":        {{ "grade": "최소/보통/과다", "comment": "짧은 분석" }}
+          }},
+
           "voicePatterns": {{
             "volumePattern": {{
               "description": "문장",
@@ -154,11 +177,13 @@ async def analyze_audio(file: UploadFile = File(...)):
             }}
           }},
 
+          "interviewerComment": "면접관 시점에서 느껴질 전반적 인상 한두 문장",
+
           "strengths": [
-            {{ "title": "짧은 제목(강점)", "description": "구체 사례를 포함한 강점 설명" }}, ...
+            {{ "title": "짧은 제목(강점)", "description": "구체 사례 포함" }}, ...
           ],
           "improvements": [
-            {{ "title": "짧은 제목(개선점)", "description": "구체 사례를 포함한 개선 설명" }}, ...
+            {{ "title": "짧은 제목(개선점)", "description": "구체 사례 포함" }}, ...
           ],
           "improvementStrategies": [
             {{ "title": "짧은 제목(개선 전략)", "description": "개선점과 1:1 대응되는 실행 가능한 전략" }}, ...
@@ -167,8 +192,13 @@ async def analyze_audio(file: UploadFile = File(...)):
 
         추가 작성 가이드
         - JSON 키·구조 변형 금지, 숫자는 정수 또는 소수 1자리.
-        - 음성 분석(면접 상황)에 맞춰 음향·언어·비언어·논리·태도 등 **다각도**로 평가.
-        - 동일 범주라도 다른 세부 요소(예: '어투-친근감' vs '어투-전문성')로 분화.
+        - metricGrades 등급 기준  
+          • wordsPerMinute: <80=느림, 80~100/130~160=다소, 100~130=적절, >160=빠름  
+          • clarity: ≥80=우수, 60~79=보통, <60=개선 필요  
+          • pauseDuration: <0.5s=빠름, 0.5~1.2s=적절, >1.2s=과다  
+          • fillers: 0~1=최소, 2~4=보통, ≥5=과다  
+        - 음향·언어·비언어·논리·태도 등 다각도로 평가.
+        - 동일 범주라도 '어투-친근감' vs '어투-전문성'처럼 세부 요소로 분화.
         """
 
         gpt_resp = client.chat.completions.create(
