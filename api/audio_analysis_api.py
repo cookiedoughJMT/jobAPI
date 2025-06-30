@@ -16,7 +16,7 @@ import re
 
 # ─────────────────────── 공통 초기화 ───────────────────────
 load_dotenv()
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(api_key=os.getenv("OPENAI"))
 
 ffmpeg_path = r"C:\ffmpeg\bin\ffmpeg.exe"
 

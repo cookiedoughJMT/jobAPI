@@ -20,6 +20,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+import logging
+
+logging.basicConfig(
+    level=logging.DEBUG,  # 또는 INFO
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.StreamHandler()
+    ]
+)
+
 # 라우터 등록
 app.include_router(interview_api, prefix="/api/interview", tags=["면접"])
 app.include_router(resume_api, prefix="/api/resume", tags=["이력서"])

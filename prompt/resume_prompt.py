@@ -181,9 +181,8 @@ def generate_json_q7sg_prompt(text):
 
 # ================================== create resume  ========================
 
-def generate_json_createresume_prompt(
-    personalities, growStory, degree, major, whenLearn,
-    company, workPeriod, position, job, achievements, forCompany
+def generate_json_createresume_prompt(        personalities, growStory, degree, major, whenLearn,
+        company, workPeriod, position, job, achievements, forCompany
 ):
     # --- 동적으로 문장 생성 ---
     grow_story_line = f"- 성장 배경: {growStory}\n" if growStory else ""
@@ -195,25 +194,31 @@ def generate_json_createresume_prompt(
     # --- 성격 ---
     personalities_summary = [p["text"] for p in personalities]
 
+    # --- career 문단 설명 ---
+    if achievements:
+        career_section = f"""사용자의 **근무 이력(회사명: {company}, 근무 기간: {workPeriod}, 직급/직책: {position}, 직무: {job})**과 **자격증/수상({achievements})**을 기반으로, 직무 전문성을 어필하세요."""
+    else:
+        career_section = """**자격증 또는 수상 경력에 대한 답변이 제공되지 않아 문장을 생성하지 못하였습니다.** 라는 문장으로 작성해주세요."""
+
     # --- Prompt ---
     prompt = f"""
             당신은 지원자의 입력값을 바탕으로, 4개의 자기소개서 문단을 구성해야 합니다. 각각의 문단은 아래와 같은 목적을 갖습니다:
-            
+
             1️⃣ personality: 지원자의 **성격적 장점 3개, 단점 2개**를 바탕으로 형성된 **성장 과정과 인성**을 서술합니다. 각 성격 항목의 `answer` 필드를 활용해, 자연스럽게 이어지는 하나의 서사 문단으로 구성하세요.{" 성장 배경도 반영해 주세요." if growStory else ""}
-            
+
             2️⃣ education: 사용자의 **학력 정보({degree}, {major})와 학업 중 경험**을 바탕으로, **지원 직무에 얼마나 적합한지**를 강조하세요.
-            
-            3️⃣ career: 사용자의 **근무 이력(회사명: {company}, 근무 기간: {workPeriod}, 직급/직책: {position}, 직무: {job})**을 기반으로, 직무 전문성을 어필하세요.
-            
+
+            3️⃣ career: {career_section}
+
             4️⃣ attitude: 사용자가 입력한 **회사에 대한 포부**({forCompany})를 바탕으로, 입사 후 어떤 태도와 자세로 근무할지를 다룬 문단을 작성하세요.
-            
+
             📌 작성 규칙:
             - 각 항목은 `personality`, `education`, `career`, `attitude` 키를 가진 JSON 형식으로 구성하세요.
             - 각 문단은 반드시 모두 10문장 이상의 자연스러운 자기소개 문단으로 작성되어야 합니다.
             - 문장은 모두 면접관에게 말하듯 '저는'으로 시작되는 존댓말 어조로 써주세요.
             - 중복된 문장 없이, 자연스럽게 연결된 흐름을 가진 서사형 문단을 작성하세요.
             - 최종 출력은 key가 포함된 JSON 객체로 반환하며, 예시는 아래와 같습니다:
-            
+
             다음은 사용자가 입력한 실제 데이터입니다:
             - 성격 요약: {personalities_summary}
             {grow_story_line}{when_learn_line}
@@ -221,7 +226,7 @@ def generate_json_createresume_prompt(
             {work_period_line}
             - 회사: {company}, 직급/직책: {position}, 직무: {job}
             {achievements_line}{for_company_line}
-            
+
             반드시 아래 형식으로 출력하세요:
             {{
               "personality": "...",
@@ -233,3 +238,4 @@ def generate_json_createresume_prompt(
 
     print(prompt)
     return prompt
+
