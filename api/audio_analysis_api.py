@@ -190,6 +190,9 @@ async def analyze_audio(file: UploadFile = File(...)):
           ]
         }}
 
+        지침
+        - 모든 JSON 결과는 한국어 또는 숫자로 반환해주세요.
+        
         추가 작성 가이드
         - JSON 키·구조 변형 금지, 숫자는 정수 또는 소수 1자리.
         - metricGrades 등급 기준  
