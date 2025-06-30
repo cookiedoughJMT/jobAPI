@@ -8,17 +8,16 @@ import re
 import os
 from fastapi import APIRouter
 
-from prompt.resume_prompt import generate_json_q4sg_prompt, generate_json_q3sg_prompt, generate_json_kts_prompt, generate_json_q6sg_prompt, generate_json_q7sg_prompt, generate_json_createresume_prompt
+from prompt.resume_prompt import generate_json_q2sg_prompt, generate_json_q4sg_prompt, generate_json_q6sg_prompt, generate_json_q7sg_prompt, generate_json_createresume_prompt
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI"))
 
 resume_api = APIRouter()
 
-class KTSRequest(BaseModel):
+class Q2SG(BaseModel):
     keyword: Optional[str] = None
-    personality : Optional[str] = None
-    type : Optional[str] = None
+    personality : Optional[list[dict]] = None
 # end class
 
 class KewordextractorRequest(BaseModel):
@@ -52,6 +51,7 @@ class Q7SG(BaseModel):
 
 class Createresume(BaseModel):
     personalities : list[object] = None
+    growStroy: Optional[str] = None
     degree: Optional[str] = None
     major: Optional[str] = None
     whenLearn: Optional[str] = None
@@ -59,50 +59,15 @@ class Createresume(BaseModel):
     workPeriod: Optional[str] = None
     position: Optional[str] = None
     job: Optional[str] = None
-    whenWork: Optional[str] = None
     achievements: list[str] = None
-    whenDoing: Optional[str] = None
     forCompany: Optional[str] = None
 # end class
-
-# ========================================================================== Q3 sentence Generator API ==========================================================================================
-
-@resume_api.post("/Q3SG")
-async def q3sentencegenerator(request: Q3SG):
-    prompt = generate_json_q3sg_prompt(request.content, request.major, request.degree)
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4.1-nano",
-            messages=[
-                {"role": "system", "content": "너는 사용자가 입력해준 정보를 토대로 자기소개서를 전문적으로 써주는 AI야"},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1000,
-            temperature=0.8
-        )
-
-        content = response.choices[0].message.content.strip()
-
-        # [] 형태의 JSON 배열을 파싱
-        json_match = re.search(r"(\[.*?\])", content, re.DOTALL)
-        if json_match:
-            parsed = json.loads(json_match.group())
-            return parsed
-
-        return {"error": "JSON 형식이 감지되지 않았습니다."}
-
-    except Exception as e:
-        return {"error": str(e)}
-
-
-# end KeywordExtractor API
 
 # ========================================================================== Q4 sentence Generator API ==========================================================================================
 
 @resume_api.post("/Q4SG")
-async def q4sentencegenerator(request: Q4SG):
-    prompt = generate_json_q4sg_prompt(request.content, request.company, request.position, request.workperiod, request.job)
+async def q3sentencegenerator(request: Q3SG):
+    prompt = generate_json_q4sg_prompt(request.content, request.degree, request.major)
 
     try:
         response = client.chat.completions.create(
@@ -130,36 +95,6 @@ async def q4sentencegenerator(request: Q4SG):
 
 
 # end KeywordExtractor API
-
-# ========================================================================== Q6 sentence Generator API ==========================================================================================
-
-@resume_api.post("/Q6SG")
-async def q6sentencegenerator(request: Q6SG):
-    prompt = generate_json_q6sg_prompt(request.content, request.achievements)
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4.1-nano",
-            messages=[
-                {"role": "system", "content": "너는 사용자가 입력해준 정보를 토대로 자기소개서를 전문적으로 써주는 AI야"},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=1000,
-            temperature=0.8
-        )
-
-        content = response.choices[0].message.content.strip()
-
-        # [] 형태의 JSON 배열을 파싱
-        json_match = re.search(r"(\[.*?\])", content, re.DOTALL)
-        if json_match:
-            parsed = json.loads(json_match.group())
-            return parsed
-
-        return {"error": "JSON 형식이 감지되지 않았습니다."}
-
-    except Exception as e:
-        return {"error": str(e)}
 
 # ========================================================================== Q7 sentence Generator API ==========================================================================================
 
@@ -195,7 +130,9 @@ async def q7sentencegenerator(request: Q7SG):
 
 @resume_api.post("/createresume")
 async def createresume(request: Createresume):
-    prompt = generate_json_createresume_prompt(request.personalities, request.degree, request.major, request.whenLearn, request.company, request.workPeriod, request.position, request.job, request.whenWork, request.achievements, request.whenDoing, request.forCompany)
+    prompt = generate_json_createresume_prompt(request.personalities,
+                                               request.growStroy,
+                                               request.degree, request.major, request.whenLearn, request.company, request.workPeriod, request.position, request.job, request.achievements, request.forCompany)
 
     try:
         response = client.chat.completions.create(
@@ -227,12 +164,12 @@ async def createresume(request: Createresume):
     except Exception as e:
         return {"error": str(e)}
 
-# ========================================================================== KTS API ==========================================================================================
+# ========================================================================== Q2 sentence Generator API  ==========================================================================================
 
-@resume_api.post("/KTS")
-async def generate_general_interview(request:KTSRequest):
+@resume_api.post("/Q2SG")
+async def q2sentencegenerator(request:Q2SG):
 
-    prompt = generate_json_kts_prompt(request.keyword, request.personality, request.type)
+    prompt = generate_json_q2sg_prompt(request.keyword, request.personality)
     try:
         response = client.chat.completions.create(
             model="gpt-4.1-nano",
@@ -246,13 +183,13 @@ async def generate_general_interview(request:KTSRequest):
 
         content = response.choices[0].message.content.strip()
 
-        json_match = re.search(r"(\{.*?\})", content, re.DOTALL)
+        # [] 형태의 JSON 배열을 파싱
+        json_match = re.search(r"(\[.*?\])", content, re.DOTALL)
         if json_match:
             parsed = json.loads(json_match.group())
-            return {"sentences": parsed["sentences"]}
+            return parsed
 
         return {"error": "JSON 형식이 감지되지 않았습니다."}
-
 
     except Exception as e:
         return {"error": str(e)}
