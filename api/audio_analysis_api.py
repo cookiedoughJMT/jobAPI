@@ -266,7 +266,7 @@ async def analyze_audio(file: UploadFile = File(...)):
         """
 
         gpt_resp = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4.1-nano",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
         )
