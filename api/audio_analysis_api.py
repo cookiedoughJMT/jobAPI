@@ -1,6 +1,7 @@
 from fastapi import UploadFile, File
 from fastapi import APIRouter
 from dotenv import load_dotenv
+from datetime import datetime
 
 import os, json, numpy as np
 
@@ -13,6 +14,8 @@ from pydub.utils import which
 
 import logging
 import re
+
+from pathlib import Path
 
 # ─────────────────────── 공통 초기화 ───────────────────────
 load_dotenv()
@@ -37,6 +40,22 @@ audio_api = APIRouter()
 
 # whisper 모델 (1회만 로드)
 whisper_model = whisper.load_model("base")
+
+# 루트 프로젝트 경로(예: main.py 옆) 기준으로 하위 폴더 지정
+BASE_DIR       = Path(__file__).resolve().parent
+WEBM_DIR       = BASE_DIR / "data" / "webm"
+WAV_DIR        = BASE_DIR / "data" / "wav"
+
+# 폴더가 없으면 생성
+WEBM_DIR.mkdir(parents=True, exist_ok=True)
+WAV_DIR.mkdir(parents=True,  exist_ok=True)
+
+audio_api = APIRouter()
+whisper_model = whisper.load_model("base")
+
+def get_timestamp_name() -> str:
+    """YYYYMMDD_HHMMSS 형태의 타임스탬프 반환"""
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 # ─────────────────────── ① 음성 분석 라우터 ───────────────────────
 # audio_api = APIRouter(prefix="/api/audio")
@@ -101,16 +120,28 @@ def convert_wpm_timeline_to_speed_pattern(wpm_timeline):
 @audio_api.post("/analyze")
 async def analyze_audio(file: UploadFile = File(...)):
     try:
-        # 0) 업로드 저장 & 변환 -------------------------------------------------
+        # 0) 업로드 저장 & 변환 ---------------------------------------------------
         raw = await file.read()
-        with open("uploaded.webm", "wb") as f:
+
+        ts = get_timestamp_name()
+        webm_fn = f"{ts}_upload.webm"
+        wav_fn = f"{ts}_upload.wav"
+
+        webm_path = WEBM_DIR / webm_fn
+        wav_path = WAV_DIR / wav_fn
+
+        # WebM 저장
+        with open(webm_path, "wb") as f:
             f.write(raw)
 
-        AudioSegment.from_file("uploaded.webm").export("uploaded.wav", format="wav")
+        # WebM → WAV 변환
+        AudioSegment.from_file(webm_path).export(wav_path, format="wav")
 
-        # 1) Whisper -----------------------------------------------------------
-        transcript = whisper_model.transcribe("uploaded.wav")["text"]
-        whisper_result = whisper_model.transcribe("uploaded.wav", word_timestamps=True, language='ko')
+        # 1) Whisper ---------------------------------------------------
+        transcript = whisper_model.transcribe(str(wav_path))["text"]
+        whisper_result = whisper_model.transcribe(
+            str(wav_path), word_timestamps=True, language="ko"
+        )
 
         # 단어 단위 시간 정보 추출
         words = []
@@ -253,7 +284,7 @@ async def analyze_audio(file: UploadFile = File(...)):
         cleaned = clean_md_json(gpt_resp.choices[0].message.content)
         parsed = json.loads(cleaned)          # dict
 
-        # 5) tonePattern.data 직접 계산 후 삽입 -------------------------------
+        # 5) tonePattern.data / speedPattern 직접 계산 후 삽입 -------------------------------
         pitch_series = compute_pitch_contour(x, Fs, win, step)
         tone_pattern = extract_tone_pattern_from_pitch(pitch_series)
 
@@ -273,11 +304,18 @@ async def analyze_audio(file: UploadFile = File(...)):
                 "data": speed_pattern_data
             }
 
+
+        file_size = webm_path.stat().st_size # webm 파일 사이즈 계산
+
         # 6) 최종 반환 ----------------------------------------------------------
         return {
             "transcript": transcript,
             "features": features,
-            "gpt_feedback": parsed     # ← 이미 dict!
+            "gpt_feedback": parsed,
+            "webmFn": str(webm_fn),
+            "webmPath": str(webm_path),
+            "wavPath": str(wav_path),
+            "webmFileSize": file_size
         }
 
     except Exception as e:
