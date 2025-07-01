@@ -9,31 +9,43 @@ import whisper
 from pyAudioAnalysis import audioBasicIO, ShortTermFeatures
 from openai import OpenAI
 
-from pydub import AudioSegment
-from pydub.utils import which
+import time
 
 import logging
 import re
 
 from pathlib import Path
 
+import ffmpeg
+
 # ─────────────────────── 공통 초기화 ───────────────────────
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI"))
 
-ffmpeg_path = r"C:\ffmpeg\bin\ffmpeg.exe"
+# ffmpeg_path = r"C:\ffmpeg\bin\ffmpeg.exe"
 
 # 환경변수 추가
-os.environ["PATH"] += os.pathsep + os.path.dirname(ffmpeg_path)
+# os.environ["PATH"] += os.pathsep + os.path.dirname(ffmpeg_path)
 
 # pydub에 명시적 지정
-AudioSegment.converter = ffmpeg_path
+# AudioSegment.converter = ffmpeg_path
 
 # pydub 내부 경로에도 설정 (추가 방어)
-if not which("ffmpeg"):
-    print("❌ ffmpeg 경로 확인 실패")
-else:
-    print("✅ ffmpeg 경로 확인됨:", which("ffmpeg"))
+# if not which("ffmpeg"):
+#     print("❌ ffmpeg 경로 확인 실패")
+# else:
+#     print("✅ ffmpeg 경로 확인됨:", which("ffmpeg"))
+
+
+
+def convert_webm_to_wav(input_path, output_path):
+    (
+        ffmpeg
+        .input(str(input_path))
+        .output(str(output_path), format='wav', acodec='pcm_s16le', ac=1, ar='16000')  # 16kHz mono
+        .overwrite_output()
+        .run(quiet=True)
+    )
 
 # FastAPI 앱
 audio_api = APIRouter()
@@ -63,14 +75,15 @@ def get_timestamp_name() -> str:
 # ────────────────── 헬퍼 함수 ──────────────────
 
 # pitch contour 구하기 librosa(음성분석라이브러리)
-def compute_pitch_contour(signal, fs, win, step):
+def compute_pitch_contour(x, Fs, win, step):
     import librosa
-    pitches, _ = librosa.piptrack(y=signal, sr=fs, n_fft=win, hop_length=step)
-    pitch_contour = []
-    for i in range(pitches.shape[1]):
-        pitch_values = pitches[:, i]
-        max_pitch = pitch_values.max()
-        pitch_contour.append(max_pitch if max_pitch > 0 else 0)
+
+    # librosa.yin은 프레임 단위 pitch 추정 → window/step 사이즈에 맞게 hop 설정
+    pitches = librosa.yin(y=x, fmin=50, fmax=300, sr=Fs, frame_length=win, hop_length=step)
+
+    # 0 또는 음수 값 제거 (음성 없는 구간에서 -1 또는 0 나올 수 있음)
+    pitch_contour = [float(p) if p > 0 else 0.0 for p in pitches]
+
     return pitch_contour
 
 def extract_tone_pattern_from_pitch(pitch_series):
@@ -119,6 +132,8 @@ def convert_wpm_timeline_to_speed_pattern(wpm_timeline):
 # ────────────────── 메인 엔드포인트 ──────────────────
 @audio_api.post("/analyze")
 async def analyze_audio(file: UploadFile = File(...)):
+    start_time = time.perf_counter()  # 시작 시간
+
     try:
         # 0) 업로드 저장 & 변환 ---------------------------------------------------
         raw = await file.read()
@@ -135,13 +150,18 @@ async def analyze_audio(file: UploadFile = File(...)):
             f.write(raw)
 
         # WebM → WAV 변환
-        AudioSegment.from_file(webm_path).export(wav_path, format="wav")
+        # AudioSegment.from_file(webm_path).export(wav_path, format="wav")
+
+        convert_webm_to_wav(webm_path, wav_path)
 
         # 1) Whisper ---------------------------------------------------
-        transcript = whisper_model.transcribe(str(wav_path))["text"]
         whisper_result = whisper_model.transcribe(
             str(wav_path), word_timestamps=True, language="ko"
         )
+        transcript = whisper_result["text"]
+
+        if len(transcript) > 500:
+            transcript = transcript[:500] + "..."
 
         # 단어 단위 시간 정보 추출
         words = []
@@ -180,16 +200,16 @@ async def analyze_audio(file: UploadFile = File(...)):
         다음은 한 사용자의 음성 면접 데이터입니다. 텍스트와 음성 피처를 참고해 아래 JSON 스키마에 **딱 맞춰서** (백틱·주석 없이) 응답하세요.
 
         ❗️핵심 의무 사항
-        1. strengths / improvements / improvementStrategies 항목에 최소 8개씩, 가능하면 10개 이상 작성.
+        1. strengths / improvements / improvementStrategies 항목에 최소 4개씩, 가능하면 8개 이상 작성.
         2. 제목(title)은 서로 다른 관점(논리·전문성·자신감·어조·속도·말투·공감력·시간 관리 등)으로 다양화.
         3. description 에는 구체적 사례를 포함.
         4. improvements 와 improvementStrategies 는 1:1로 대응(같은 순서).
 
         텍스트가 너무 짧거나 성의가 부족하면 confidence, overallScore 를 10~30 영역으로 낮춰 주세요.
                 
-        strengths 항목은 최소 8개 이상 해주세요.
-        improvements 항목은 최소 8개 이상 해주세요.
-        improvementStrategies 항목은 최소 8개 이상 해주세요.                
+        strengths 항목은 최소 4개 이상 해주세요.
+        improvements 항목은 최소 4개 이상 해주세요.
+        improvementStrategies 항목은 최소 4개 이상 해주세요.                
                 
         중복 금지:
         - strengths.title 과 improvements.title 은 절대 중복되지 않도록 작성하세요.
@@ -208,57 +228,28 @@ async def analyze_audio(file: UploadFile = File(...)):
         {feat_txt}
         - 구간별 속도 변화: {json.dumps(wpm_timeline[:5])[:300]}...
         
-        {{
-          "overallScore":  (10~100 정수),
-          "clarity":       (0~100 정수),
-          "speed":         (0~100 정수),
-          "volume":        (0~100 정수),
-          "confidence":    (overallScore 동일),
+        📄 응답은 아래 구조의 JSON 형식으로 작성해주세요:
 
-          "speechMetrics": {{
-            "wordsPerMinute": 0,
-            "clarity":        0,
-            "intonation":     0,
-            "pauseDuration":  0.0,
-            "pronunciation":  0,
-            "fillers":        0
-          }},
+        - overallScore, clarity, speed, volume, confidence: 0~100 사이의 정수 (confidence는 overallScore와 동일)
+        - speechMetrics: 하위 항목 포함
+            • wordsPerMinute, clarity, intonation, pauseDuration, pronunciation, fillers
+            • 숫자 또는 소수 1자리 (pauseDuration은 초 단위)
+        - metricGrades: 각 항목에 대해 아래 형식
+            {{ "grade": "등급", "comment": "짧은 설명" }}
+            • 등급 범주는 각 항목에 따라 달라짐 (아래 참고)
+            • wordsPerMinute, clarity, intonation, pauseDuration, pronunciation, fillers
+        - voicePatterns:
+            • volumePattern: {{ "description": 문자열, "data": [숫자 배열] }}
+            • speedPattern: {{ "description": 문자열, "data": [{{"position": 정수, "level": 정수}}, ...] }}
+            • tonePattern: {{ "description": 문자열, "data": [{{"position": 정수, "level": 정수}}, ...] }}
+        - interviewerComment: 한두 문장의 면접관 시점 피드백
+        - strengths / improvements / improvementStrategies:
+            • 각 항목은 4개 이상 작성
+            • 형식: {{ "title": "짧은 제목", "description": "..." }}
+            • improvements 와 improvementStrategies는 1:1 대응
+        
+        JSON 키 이름은 정확하게 유지해주세요. 주석이나 불필요한 포맷(백틱 등)은 포함하지 말고, 결과만 출력해주세요.
 
-          "metricGrades": {{
-            "wordsPerMinute": {{ "grade": "적절/빠름/느림", "comment": "짧은 분석" }},
-            "clarity":        {{ "grade": "우수/보통/개선 필요", "comment": "짧은 분석" }},
-            "intonation":     {{ "grade": "풍부/단조로움", "comment": "짧은 분석" }},
-            "pauseDuration":  {{ "grade": "적절/빠름/과다", "comment": "짧은 분석" }},
-            "pronunciation":  {{ "grade": "우수/개선 필요", "comment": "짧은 분석" }},
-            "fillers":        {{ "grade": "최소/보통/과다", "comment": "짧은 분석" }}
-          }},
-
-          "voicePatterns": {{
-            "volumePattern": {{
-              "description": "문장",
-              "data": [0,0,0,0,0]
-            }},
-            "speedPattern": {{
-              "description": "문장",
-              "data": [{{"position":0,"level":0}},{{"position":10,"level":1}},...]
-            }},
-            "tonePattern": {{
-              "description": "문장"
-            }}
-          }},
-
-          "interviewerComment": "면접관 시점에서 느껴질 전반적 인상 한두 문장",
-
-          "strengths": [
-            {{ "title": "짧은 제목(강점)", "description": "구체 사례 포함" }}, ...
-          ],
-          "improvements": [
-            {{ "title": "짧은 제목(개선점)", "description": "구체 사례 포함" }}, ...
-          ],
-          "improvementStrategies": [
-            {{ "title": "짧은 제목(개선 전략)", "description": "개선점과 1:1 대응되는 실행 가능한 전략" }}, ...
-          ]
-        }}
 
         지침
         - 모든 JSON 결과는 한국어 또는 숫자로 반환해주세요.
@@ -307,10 +298,14 @@ async def analyze_audio(file: UploadFile = File(...)):
 
         file_size = webm_path.stat().st_size # webm 파일 사이즈 계산
 
+        end_time = time.perf_counter()  # 종료 시간
+        duration = round(end_time - start_time, 2)  # 걸린 시간 (초)
+
+        print('걸린시간: ', duration)
+
         # 6) 최종 반환 ----------------------------------------------------------
         return {
             "transcript": transcript,
-            "features": features,
             "gpt_feedback": parsed,
             "webmFn": str(webm_fn),
             "webmPath": str(webm_path),
