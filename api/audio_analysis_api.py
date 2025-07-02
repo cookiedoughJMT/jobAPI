@@ -99,12 +99,25 @@ def clean_md_json(text: str) -> str:
     """ ```json ... ```  감싸기 제거 """
     return re.sub(r"^```json\s*|\s*```$", "", text.strip(), flags=re.DOTALL)
 
-def compute_wpm_timeline(words, segment_size=5.0):
+def compute_wpm_timeline(words, default_segment_size=5.0, short_segment_size=3.0, threshold=30.0):
     timeline = []
-    current_start = 0.0
-    end_time = words[-1]["end"] if words else 0
 
-    print(words)
+    if not words:
+        return []
+
+    current_start = 0.0
+    end_time = words[-1]["end"]
+
+    # 조건 분기: 10초 미만이면 1초, 30초 미만이면 3초, 아니면 기본값으로 기준 삼아 추출
+    if end_time < 10:
+        segment_size = 1.0
+    elif end_time < threshold:
+        segment_size = short_segment_size
+    else:
+        segment_size = default_segment_size
+
+
+    print('segment_size: ', segment_size)
 
     while current_start < end_time:
         current_end = current_start + segment_size
@@ -114,6 +127,7 @@ def compute_wpm_timeline(words, segment_size=5.0):
         current_start += segment_size
 
     return timeline
+
 
 def convert_wpm_timeline_to_speed_pattern(wpm_timeline):
     if not wpm_timeline:
@@ -169,7 +183,7 @@ async def analyze_audio(file: UploadFile = File(...)):
             words.extend(seg.get("words", []))
 
         # 2) pyAudioAnalysis ---------------------------------------------------
-        Fs, x = audioBasicIO.read_audio_file("uploaded.wav")
+        Fs, x = audioBasicIO.read_audio_file(str(wav_path))
         x = audioBasicIO.stereo_to_mono(x)
 
         # ⭐️ librosa 사용을 위해 float32로 변환
@@ -253,6 +267,8 @@ async def analyze_audio(file: UploadFile = File(...)):
 
         지침
         - 모든 JSON 결과는 한국어 또는 숫자로 반환해주세요.
+        - 모든 출력 문장은 반드시 ~습니다, ~합니다와 같은 존댓말 종결어미를 사용해주세요.
+        - 반말, 명령형, 음슴체 표현(~함, ~됨, ~임, ~하지 않음 등)은 절대 사용하지 마세요.
         
         추가 작성 가이드
         - JSON 키·구조 변형 금지, 숫자는 정수 또는 소수 1자리.
