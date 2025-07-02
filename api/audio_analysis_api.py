@@ -99,10 +99,25 @@ def clean_md_json(text: str) -> str:
     """ ```json ... ```  감싸기 제거 """
     return re.sub(r"^```json\s*|\s*```$", "", text.strip(), flags=re.DOTALL)
 
-def compute_wpm_timeline(words, segment_size=5.0, min_segments=11):
+def compute_wpm_timeline(words, default_segment_size=5.0, short_segment_size=3.0, threshold=30.0):
     timeline = []
+
+    if not words:
+        return []
+
     current_start = 0.0
-    end_time = words[-1]["end"] if words else 0
+    end_time = words[-1]["end"]
+
+    # 조건 분기: 10초 미만이면 1초, 30초 미만이면 3초, 아니면 기본값으로 기준 삼아 추출
+    if end_time < 10:
+        segment_size = 1.0
+    elif end_time < threshold:
+        segment_size = short_segment_size
+    else:
+        segment_size = default_segment_size
+
+
+    print('segment_size: ', segment_size)
 
     while current_start < end_time:
         current_end = current_start + segment_size
@@ -111,12 +126,8 @@ def compute_wpm_timeline(words, segment_size=5.0, min_segments=11):
         timeline.append({"time": round(current_start), "wpm": wpm})
         current_start += segment_size
 
-    # 최소 segment 개수 보장
-    while len(timeline) < min_segments:
-        timeline.append({"time": round(current_start), "wpm": 0})
-        current_start += segment_size
-
     return timeline
+
 
 def convert_wpm_timeline_to_speed_pattern(wpm_timeline):
     if not wpm_timeline:
