@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-from flask import request_started
 from openai import OpenAI
 from pydantic import BaseModel
 from typing import Optional
