@@ -99,18 +99,21 @@ def clean_md_json(text: str) -> str:
     """ ```json ... ```  감싸기 제거 """
     return re.sub(r"^```json\s*|\s*```$", "", text.strip(), flags=re.DOTALL)
 
-def compute_wpm_timeline(words, segment_size=5.0):
+def compute_wpm_timeline(words, segment_size=5.0, min_segments=11):
     timeline = []
     current_start = 0.0
     end_time = words[-1]["end"] if words else 0
-
-    print(words)
 
     while current_start < end_time:
         current_end = current_start + segment_size
         count = sum(1 for w in words if current_start <= w["start"] < current_end)
         wpm = int(count / segment_size * 60)
         timeline.append({"time": round(current_start), "wpm": wpm})
+        current_start += segment_size
+
+    # 최소 segment 개수 보장
+    while len(timeline) < min_segments:
+        timeline.append({"time": round(current_start), "wpm": 0})
         current_start += segment_size
 
     return timeline
