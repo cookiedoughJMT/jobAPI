@@ -183,7 +183,7 @@ async def analyze_audio(file: UploadFile = File(...)):
             words.extend(seg.get("words", []))
 
         # 2) pyAudioAnalysis ---------------------------------------------------
-        Fs, x = audioBasicIO.read_audio_file("uploaded.wav")
+        Fs, x = audioBasicIO.read_audio_file(str(wav_path))
         x = audioBasicIO.stereo_to_mono(x)
 
         # ⭐️ librosa 사용을 위해 float32로 변환
