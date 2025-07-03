@@ -31,10 +31,10 @@ logging.basicConfig(
 )
 
 # 라우터 등록
-app.include_router(interview_api, prefix="/api/interview", tags=["면접"])
-app.include_router(resume_api, prefix="/api/resume", tags=["이력서"])
-app.include_router(essay_analysis_api, prefix="/api/essay", tags=["자소서"])
-app.include_router(audio_api, prefix="/api/audio", tags=["음성"])
+app.include_router(interview_api, prefix="/ai/interview", tags=["면접"])
+app.include_router(resume_api, prefix="/ai/resume", tags=["이력서"])
+app.include_router(essay_analysis_api, prefix="/ai/essay", tags=["자소서"])
+app.include_router(audio_api, prefix="/ai/audio", tags=["음성"])
 
 @app.get("/")
 async def root():
