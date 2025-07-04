@@ -63,7 +63,7 @@ def get_timestamp_name() -> str:
     """YYYYMMDD_HHMMSS 형태의 타임스탬프 반환"""
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
-# ─────────────────────── ① 음성 분석 라우터 ───────────────────────
+# ─────────────────────── ① 음성 분석 라우터 ──────────────────────
 # audio_api = APIRouter(prefix="/api/audio")
 
 # ────────────────── 헬퍼 함수 ──────────────────
